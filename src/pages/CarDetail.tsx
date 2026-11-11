@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   BadgeCheck, CalendarDays, Calendar, ChevronLeft, ChevronRight, Expand, Fuel, Gauge, Hash, MapPin,
-  MessageSquare, Palette, Settings2, Share2, ShieldAlert, Car as CarIcon, X,
+  MessageSquare, Palette, Settings2, Share2, Car as CarIcon, X,
 } from 'lucide-react';
 import { fetchCarByPublicId, fetchSimilarCars, sortedPhotos } from '@/lib/cars';
 import { supabase } from '@/lib/supabase';
@@ -20,6 +20,7 @@ import { CarImage } from '@/components/cars/CarImage';
 import { CarCard } from '@/components/cars/CarCard';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { RatingSummary, ReportButton } from '@/components/community/Community';
+import { PaymentEstimator, SafetyTips, VehicleHistory, estimatedMonthly } from '@/components/cars/BuyerTools';
 
 export default function CarDetail() {
   const { slug = '' } = useParams();
@@ -109,6 +110,14 @@ export default function CarDetail() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [lightbox, photos.length]);
+
+  // Leave room under the footer for the fixed mobile action bar.
+  const showMobileBar = Boolean(car) && car!.owner_id !== user?.id && car!.status !== 'sold';
+  useEffect(() => {
+    if (!showMobileBar) return;
+    document.body.classList.add('pb-24', 'lg:pb-0');
+    return () => document.body.classList.remove('pb-24', 'lg:pb-0');
+  }, [showMobileBar]);
 
   if (!publicId) return <Navigate to="/cars" replace />;
   if (car === undefined) return <PageLoader />;
@@ -264,6 +273,11 @@ export default function CarDetail() {
             <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{title}</h1>
             {car.trim_level && <p className="text-muted-foreground">{car.trim_level}</p>}
             <p className="mt-3 text-3xl font-extrabold text-navy sm:text-4xl">{formatPrice(car.price)}</p>
+            {car.status !== 'sold' && (
+              <a href="#payment" className="text-sm font-medium text-primary hover:underline">
+                est. {formatPrice(estimatedMonthly(car.price))}/mo
+              </a>
+            )}
             <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
               <MapPin className="size-4" /> {car.city}, {car.state} {car.zip}
             </p>
@@ -326,13 +340,7 @@ export default function CarDetail() {
             </div>
           )}
 
-          <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-            <ShieldAlert className="mt-0.5 size-4 shrink-0" />
-            <p>
-              <strong>Stay safe:</strong> meet in a public place, inspect the car and verify the title matches the
-              seller's ID before paying. Never send deposits or wire money in advance.
-            </p>
-          </div>
+          <SafetyTips compact />
         </div>
       </div>
 
@@ -356,7 +364,16 @@ export default function CarDetail() {
               <p className="mt-3 whitespace-pre-line leading-relaxed text-muted-foreground">{car.description}</p>
             </section>
           )}
+          {!isOwner && <SafetyTips />}
         </div>
+        <aside className="space-y-5">
+          <VehicleHistory carId={car.id} vinLast6={car.vin_last6} signedIn={Boolean(user)} from={carPath(car)} />
+          {car.status !== 'sold' && (
+            <div id="payment" className="scroll-mt-24">
+              <PaymentEstimator price={car.price} />
+            </div>
+          )}
+        </aside>
       </div>
 
       {similar.length > 0 && (
@@ -366,6 +383,24 @@ export default function CarDetail() {
             {similar.map((c) => <CarCard key={c.id} car={c} />)}
           </div>
         </section>
+      )}
+
+      {/* Mobile action bar: price + contact always within reach */}
+      {!isOwner && car.status !== 'sold' && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] backdrop-blur lg:hidden" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
+          <div className="mx-auto flex max-w-xl items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-lg font-extrabold leading-tight text-navy">{formatPrice(car.price)}</p>
+              <p className="truncate text-xs text-muted-foreground">est. {formatPrice(estimatedMonthly(car.price))}/mo · {car.city}, {car.state}</p>
+            </div>
+            <Button variant="outline" size="icon" onClick={() => contact(true)} disabled={Boolean(contacting)} aria-label="Schedule a visit">
+              <CalendarDays />
+            </Button>
+            <Button onClick={() => contact(false)} loading={contacting === 'message'} disabled={Boolean(contacting)}>
+              <MessageSquare /> Message seller
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Lightbox */}

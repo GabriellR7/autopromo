@@ -20,6 +20,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { CarImage } from '@/components/cars/CarImage';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { ReportButton } from '@/components/community/Community';
+import { SCAM_PATTERN } from '@/components/cars/BuyerTools';
 
 export default function Messages() {
   useDocumentTitle('Messages');
@@ -223,6 +224,11 @@ function Thread({ conversation: c, userId, onChanged }: { conversation: Conversa
 
   const openVisit = visits.find((v) => v.status === 'proposed' || v.status === 'confirmed');
   const lastOwn = useMemo(() => [...(messages ?? [])].reverse().find((m) => m.sender_id === userId), [messages, userId]);
+  // Warn buyers when the other side mentions typical scam payment methods.
+  const scamWarning = useMemo(
+    () => !isOwner && (messages ?? []).some((m) => m.sender_id !== userId && m.body && SCAM_PATTERN.test(m.body)),
+    [messages, userId, isOwner],
+  );
   const warn = !c.contact_unlocked && looksLikeContactInfo(text);
 
   return (
@@ -264,12 +270,29 @@ function Thread({ conversation: c, userId, onChanged }: { conversation: Conversa
         </div>
       )}
 
+      {scamWarning && (
+        <div role="alert" className="flex gap-2 border-b border-destructive/20 bg-destructive/5 px-4 py-2.5 text-xs text-destructive">
+          <ShieldAlert className="mt-0.5 size-4 shrink-0" />
+          <p>
+            <strong>Be careful.</strong> Never pay a deposit, wire money, use gift cards or payment apps, or agree to have a car
+            "shipped" before you see it in person and check the title. If something feels off, use Report.
+          </p>
+        </div>
+      )}
+
       {/* Messages */}
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-4 sm:px-4">
         {messages === null ? (
           <div className="flex justify-center py-10"><Loader2 className="size-6 animate-spin text-primary" /></div>
         ) : messages.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">Say hi 👋 and ask anything about the car.</p>
+          <div className="py-10 text-center text-sm text-muted-foreground">
+            <p>Say hi 👋 and ask anything about the car.</p>
+            {canProposeVisit && (
+              <p className="mx-auto mt-3 max-w-sm text-xs">
+                Tip: ask for the VIN and service records, meet in a public place, and never pay before seeing the car and the title.
+              </p>
+            )}
+          </div>
         ) : (
           messages.map((m, i) => {
             const mine = m.sender_id === userId;

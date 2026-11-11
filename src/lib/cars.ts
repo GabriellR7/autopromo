@@ -189,3 +189,10 @@ export function paramsFromFilters(filters: CarFilters): URLSearchParams {
   }
   return p;
 }
+
+/** Full VIN for a signed-in buyer (logged + rate limited by the database). */
+export async function revealVin(carId: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc('reveal_car_vin', { p_car_id: carId });
+  if (error) throw new Error(error.message);
+  return (data as string | null) ?? null;
+}
