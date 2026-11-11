@@ -61,9 +61,41 @@ export default function CarDetail() {
 
   const photos = useMemo(() => sortedPhotos(car?.car_photos), [car]);
   const title = car ? carTitle(car) : null;
+  const seoJsonLd = useMemo(() => {
+    if (!car) return null;
+    const fuelMap: Record<string, string> = { gasoline: 'Gasoline', diesel: 'Diesel', hybrid: 'Hybrid', plug_in_hybrid: 'PlugInHybrid', electric: 'Electric', flex: 'FlexFuel' };
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'Car',
+      name: `${car.year} ${car.make} ${car.model}${car.trim_level ? ` ${car.trim_level}` : ''}`,
+      brand: { '@type': 'Brand', name: car.make },
+      model: car.model,
+      vehicleModelDate: String(car.year),
+      mileageFromOdometer: { '@type': 'QuantitativeValue', value: car.mileage, unitCode: 'SMI' },
+      fuelType: fuelMap[car.fuel_type] ?? car.fuel_type,
+      vehicleTransmission: car.transmission,
+      bodyType: car.body_type,
+      color: car.exterior_color ?? undefined,
+      itemCondition: 'https://schema.org/UsedCondition',
+      image: photos.slice(0, 5).map((p) => p.url),
+      description: car.description ?? undefined,
+      offers: {
+        '@type': 'Offer',
+        price: car.price,
+        priceCurrency: 'USD',
+        availability: car.status === 'sold' ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock',
+        url: window.location.origin + carPath(car),
+        areaServed: { '@type': 'Place', address: { '@type': 'PostalAddress', addressLocality: car.city, addressRegion: car.state, postalCode: car.zip, addressCountry: 'US' } },
+      },
+    };
+  }, [car, photos]);
+
   useDocumentTitle(
     car ? `${title}${car.trim_level ? ` ${car.trim_level}` : ''} for sale in ${car.city}, ${car.state} — ${formatPrice(car.price)}` : null,
-    car?.description ?? undefined,
+    car
+      ? `${title} for sale in ${car.city}, ${car.state}: ${formatPrice(car.price)}, ${formatMiles(car.mileage)}. ${car.description ?? 'Private seller — contact the owner directly on AutoPromo.'}`
+      : undefined,
+    { image: photos[0]?.url ?? null, jsonLd: seoJsonLd, type: 'product' },
   );
 
   // Keyboard navigation in the lightbox

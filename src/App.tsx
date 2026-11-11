@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ReactNode } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
+import { RouteError } from '@/components/layout/RouteError';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { GuestOnly, RequireAuth } from '@/components/auth/RequireAuth';
 import { PageLoader } from '@/components/ui/misc';
@@ -39,6 +40,7 @@ const s = (el: ReactNode) => <Suspense fallback={<PageLoader />}>{el}</Suspense>
 const router = createBrowserRouter([
   {
     element: <Layout />,
+    errorElement: <RouteError />,
     children: [
       { path: '/', element: <Home /> },
       { path: '/cars', element: <Cars /> },

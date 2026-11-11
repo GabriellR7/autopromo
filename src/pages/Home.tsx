@@ -18,7 +18,7 @@ const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 25 }, (_, i) => currentYear + 1 - i);
 
 export default function Home() {
-  useDocumentTitle('Sell your car faster');
+  useDocumentTitle('Sell your car faster', 'List your car for free on AutoPromo. Local promoters share it with their network and earn a referral fee only when it sells. Buy used cars directly from owners in Texas.');
   const navigate = useNavigate();
   const { user } = useAuth();
   const [featured, setFeatured] = useState<CarWithPhotos[] | null>(null);

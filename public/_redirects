@@ -1,1 +1,6 @@
+# Netlify
+# Dynamic sitemap served by the Supabase Edge Function "sitemap"
+/sitemap.xml  https://scvdvwryiuthnzwsyade.supabase.co/functions/v1/sitemap  200
+
+# Single-page app: every other route is handled by React
 /*    /index.html   200

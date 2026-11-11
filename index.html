@@ -9,15 +9,45 @@
       content="AutoPromo connects car owners with local promoters who help find buyers. List your car for free or earn referral commissions."
     />
     <meta name="theme-color" content="#0f1d3a" />
+
+    <!-- Default social preview (pages update these at runtime) -->
+    <meta property="og:site_name" content="AutoPromo" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="AutoPromo — Sell your car faster" />
+    <meta property="og:description" content="List your car for free. Local promoters share it and earn a referral fee only when it sells." />
+    <meta property="og:image" content="/og-default.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="/og-default.png" />
+
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- Connect early to the API and fonts -->
+    <link rel="preconnect" href="%VITE_SUPABASE_URL%" crossorigin />
+    <link rel="dns-prefetch" href="%VITE_SUPABASE_URL%" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "AutoPromo",
+        "description": "Marketplace where car owners list for free and local promoters earn referral commissions."
+      }
+    </script>
   </head>
   <body>
+    <noscript>
+      <p style="font-family: sans-serif; padding: 24px">AutoPromo needs JavaScript to run. Please enable it in your browser.</p>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

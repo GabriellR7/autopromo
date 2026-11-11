@@ -19,9 +19,13 @@ const YEARS = Array.from({ length: 40 }, (_, i) => currentYear + 1 - i);
 const MILEAGE_OPTIONS = [25000, 50000, 75000, 100000, 150000];
 
 export default function Cars() {
-  useDocumentTitle('Used cars for sale');
   const [params, setParams] = useSearchParams();
   const filters = useMemo(() => filtersFromParams(params), [params]);
+  const seoTitle = `Used ${[filters.make, filters.model].filter(Boolean).join(' ') || ''} cars for sale${filters.zip ? ` near ${filters.zip}` : ' in Texas'}`.replace(/\s+/g, ' ');
+  useDocumentTitle(
+    seoTitle,
+    `Browse ${filters.make ? `${filters.make} ` : ''}used cars sold directly by private owners${filters.zip ? ` near ${filters.zip}` : ''}. Filter by price, year, mileage and distance. No dealer markup.`,
+  );
 
   const [cars, setCars] = useState<CarWithPhotos[] | null>(null);
   const [total, setTotal] = useState(0);

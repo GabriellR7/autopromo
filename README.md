@@ -1,4 +1,4 @@
-# AutoPromo — Fases 1 a 5
+# AutoPromo
 
 Marketplace de carros usados para os EUA, onde **donos** anunciam e **promotores** indicam compradores em troca de comissão.
 O site está todo em inglês americano (USD, milhas, MM/DD/YYYY).
@@ -29,12 +29,14 @@ O site está todo em inglês americano (USD, milhas, MM/DD/YYYY).
 | Avaliações (Fase 5) | Depois de uma venda com promotor creditado, dono e promotor avaliam um ao outro (1 a 5 estrelas + comentário). A nota aparece na página do carro, nos pedidos de promotores e no painel do promotor. Selo **Top Promoter** para nível Gold ou nota 4.8+ com pelo menos 5 avaliações |
 | Denúncias (Fase 5) | Botão "Report" no anúncio e no chat (golpe, informação falsa, não é o dono etc.), com limite de 10 por dia por pessoa |
 | Painel admin (Fase 5) | Em `/admin`: números da plataforma, **aprovação de anúncios** (opcional), usuários (verificar, suspender, nível, admin), **decisão de disputas** (creditar o promotor gera a comissão), denúncias, comissões (marcar paga ou cancelar) e configurações (taxa, comissão sugerida, limite de anúncios, **estados liberados**) |
+| SEO (Fase 6) | Título, descrição, link canônico, Open Graph e Twitter por página. Dados estruturados (schema.org `Car` + `Offer`) na página do carro. URLs amigáveis (`/cars/2019-honda-civic-austin-tx-1`). `robots.txt`, **sitemap dinâmico** (`/sitemap.xml`, via Edge Function `sitemap`) e imagem padrão de compartilhamento. Páginas privadas com `noindex` |
+| Performance (Fase 6) | Banco: regras de acesso otimizadas e 18 índices novos (avisos do Supabase zerados). Site: painel e admin em arquivos separados, bibliotecas grandes em cache próprio, cache longo dos arquivos do build, conexão antecipada com o Supabase, tela de erro com recarga automática depois de um deploy, manifest e ícones de app |
 | Banco | Tabelas, RLS, regras no banco (limite de anúncios, estados liberados, máx. 20 fotos), busca geográfica, contador de visualizações, bucket de fotos |
 
 
 ## 1. Configurar o Supabase
 
-> **Já está pronto:** o projeto **autopromo** foi criado na sua conta do Supabase (organização "adega capital", região East US), com as 8 migrações, os dados de teste e as Edge Functions (`notifications`, `stripe-api`, `stripe-webhook`) já publicados. O arquivo `.env` já vem com a URL e a chave pública. Faltam só os passos 4 a 7 abaixo, que são feitos no painel.
+> **Já está pronto:** o projeto **autopromo** foi criado na sua conta do Supabase (organização "adega capital", região East US), com as 10 migrações, os dados de teste e as Edge Functions (`notifications`, `stripe-api`, `stripe-webhook`, `sitemap`) já publicados. O `.env` não vai pro GitHub: crie o seu como mostra o passo 2. Faltam só os passos 4 a 7 abaixo, que são feitos no painel.
 >
 > URL: `https://scvdvwryiuthnzwsyade.supabase.co`
 
@@ -63,7 +65,9 @@ Para montar do zero em outro projeto:
 ## 2. Rodar o site
 
 ```bash
-# o .env já vem preenchido com o projeto autopromo
+cp .env.example .env    # preencha com Supabase → Project Settings → API:
+                        #   VITE_SUPABASE_URL=https://scvdvwryiuthnzwsyade.supabase.co
+                        #   VITE_SUPABASE_ANON_KEY=<a chave "anon public">
 npm install
 npm run dev             # http://localhost:5173
 ```
@@ -141,15 +145,31 @@ src/
   pages/         Home, Cars, CarDetail, ReferralRedirect (/r/CODE), StaticPages, auth/*, dashboard/* (incl. promoter/*), admin/*
 supabase/
   migrations/    SQL das fases (rodar em ordem)
-  functions/     notifications (e-mails), stripe-api (Connect + Checkout), stripe-webhook
+  functions/     notifications (e-mails), stripe-api (Connect + Checkout), stripe-webhook, sitemap
   seed*.sql      dados de teste
   cron_notifications.sql  agendamento dos e-mails
 ```
 
 O ZIP é convertido em cidade, estado e coordenadas pela API gratuita [Zippopotam.us](https://zippopotam.us), sem chave.
 
-## Próximas fases
+## Checklist de lançamento
 
-6. Polimento, SEO e performance
+**Antes de abrir para o público:**
+
+- [ ] **Advogado americano** revisar Terms of Service, Privacy Policy e Promoter Agreement, e confirmar o modelo de indicação no(s) estado(s) liberado(s)
+- [ ] **Empresa nos EUA** (LLC) e conta bancária, para o Stripe Connect em modo real
+- [ ] **Projeto de produção no Supabase**, separado deste de testes: rodar só as migrações (sem os arquivos `seed*.sql`), região **East US**
+- [ ] **Apagar os usuários de teste** (`*@demo.autopromo.test`) se for reaproveitar este projeto
+- [ ] **Domínio próprio** + hospedagem (Netlify ou Vercel) com `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`
+- [ ] Supabase → **Authentication → URL Configuration**: Site URL e Redirect URLs com o domínio real
+- [ ] **Login com Google** configurado com o domínio real
+- [ ] Secrets das Edge Functions: `SITE_URL` (domínio real), Stripe em modo **live**, Resend com **domínio verificado**, `CRON_SECRET` + `supabase/cron_notifications.sql`
+- [ ] Trocar `YOUR-DOMAIN.com` em `public/robots.txt`. Se usar Netlify, a URL do projeto Supabase de produção também vai em `public/_redirects`. Se usar Vercel, em `vercel.json`
+- [ ] Cadastrar o site no **Google Search Console** e enviar `https://seudominio.com/sitemap.xml`
+- [ ] Ligar **"Leaked password protection"** e o **SMTP próprio** em Authentication (o e-mail padrão do Supabase tem limite baixo de envios)
+- [ ] Criar seu usuário admin e revisar **Admin → Settings** (taxa, estados, aprovação de anúncios)
+- [ ] Voltar o repositório do GitHub para **privado**
+
+**Limite conhecido de SEO:** o site é uma SPA (React no navegador). O Google lê as páginas normalmente, mas Facebook e WhatsApp não executam JavaScript, então o link compartilhado mostra a imagem e o texto padrão do AutoPromo, e não a foto do carro. O kit de divulgação do promotor já gera uma imagem do carro pra compensar. Se isso virar prioridade, dá pra adicionar um serviço de pré-renderização (Prerender.io, ou Netlify Edge Functions) só pros robôs.
 
 > Os textos de Terms of Service e Privacy Policy são modelos e precisam ser revisados por um advogado americano antes do lançamento.
