@@ -1,4 +1,4 @@
-# AutoPromo — Fases 1 a 4
+# AutoPromo — Fases 1 a 5
 
 Marketplace de carros usados para os EUA, onde **donos** anunciam e **promotores** indicam compradores em troca de comissão.
 O site está todo em inglês americano (USD, milhas, MM/DD/YYYY).
@@ -26,12 +26,15 @@ O site está todo em inglês americano (USD, milhas, MM/DD/YYYY).
 | Comissões (Fase 4) | A comissão é calculada pelo banco (fixa ou % do preço final), menos a taxa da plataforma (`platform_fee_percent`). O dono paga com cartão pelo **Stripe Checkout**, o valor vai direto para a conta Stripe do promotor e a taxa fica com o AutoPromo (*destination charge*) |
 | Recebimento (Fase 4) | Em **Earnings**, o promotor cadastra o recebimento pelo **Stripe Connect Express** (identidade + banco americano) e vê o que tem a receber e o que já recebeu. O nível sobe com as vendas: Silver com 3, Gold com 10 |
 | Disputas (Fase 4) | Se o dono marcar como vendido sem creditar um promotor que trouxe compradores pelo chat, **abre uma revisão automática**. O promotor também pode pedir revisão em até 30 dias. A decisão fica no painel admin (Fase 5) |
+| Avaliações (Fase 5) | Depois de uma venda com promotor creditado, dono e promotor avaliam um ao outro (1 a 5 estrelas + comentário). A nota aparece na página do carro, nos pedidos de promotores e no painel do promotor. Selo **Top Promoter** para nível Gold ou nota 4.8+ com pelo menos 5 avaliações |
+| Denúncias (Fase 5) | Botão "Report" no anúncio e no chat (golpe, informação falsa, não é o dono etc.), com limite de 10 por dia por pessoa |
+| Painel admin (Fase 5) | Em `/admin`: números da plataforma, **aprovação de anúncios** (opcional), usuários (verificar, suspender, nível, admin), **decisão de disputas** (creditar o promotor gera a comissão), denúncias, comissões (marcar paga ou cancelar) e configurações (taxa, comissão sugerida, limite de anúncios, **estados liberados**) |
 | Banco | Tabelas, RLS, regras no banco (limite de anúncios, estados liberados, máx. 20 fotos), busca geográfica, contador de visualizações, bucket de fotos |
 
 
 ## 1. Configurar o Supabase
 
-> **Já está pronto:** o projeto **autopromo** foi criado na sua conta do Supabase (organização "adega capital", região East US), com as 6 migrações, os dados de teste e as Edge Functions (`notifications`, `stripe-api`, `stripe-webhook`) já publicados. O arquivo `.env` já vem com a URL e a chave pública. Faltam só os passos 4 a 7 abaixo, que são feitos no painel.
+> **Já está pronto:** o projeto **autopromo** foi criado na sua conta do Supabase (organização "adega capital", região East US), com as 8 migrações, os dados de teste e as Edge Functions (`notifications`, `stripe-api`, `stripe-webhook`) já publicados. O arquivo `.env` já vem com a URL e a chave pública. Faltam só os passos 4 a 7 abaixo, que são feitos no painel.
 >
 > URL: `https://scvdvwryiuthnzwsyade.supabase.co`
 
@@ -52,7 +55,7 @@ Para montar do zero em outro projeto:
    - **Site URL:** `http://localhost:5173` (depois troque pelo domínio real)
    - **Redirect URLs:** adicione `http://localhost:5173/**` e, depois, `https://seudominio.com/**`
 6. **Login com Google:** em **Authentication → Providers → Google**, ative e cole o Client ID e o Secret criados no [Google Cloud Console](https://console.cloud.google.com/apis/credentials). No Google, use como "Authorized redirect URI" a URL de callback que o Supabase mostra nessa mesma tela.
-7. **Primeiro admin:** depois de criar sua conta, rode no SQL Editor:
+7. **Primeiro admin:** crie sua conta no site e rode no SQL Editor (depois disso, novos admins são criados pelo próprio painel, em Admin → Users):
    ```sql
    update public.profiles set is_admin = true where id = (select id from auth.users where email = 'SEU@EMAIL.com');
    ```
@@ -114,6 +117,8 @@ Na Fase 5 isso vira uma tela no painel admin.
 - **VIN completo** fica na tabela `car_private`, que só o dono vê. O público vê só os 6 últimos caracteres.
 - **Fotos** ficam em `car-photos/<user_id>/<car_id>/`, e cada usuário só grava na própria pasta.
 - **Chat:** só os 2 participantes leem as mensagens. O promotor vê só que a conversa existe (para as estatísticas), nunca o conteúdo. Telefone fica em `profile_contacts`, visível só pelo dono do número, e só é revelado ao outro por `get_contact_details` depois da visita confirmada.
+- **Admin:** todas as ações de admin passam por funções que conferem `is_admin` no banco. Ninguém vira admin pelo navegador, e o admin não consegue suspender nem rebaixar a si mesmo.
+- **Antes de lançar:** apague os usuários de teste (`*@demo.autopromo.test`) em Authentication → Users. As senhas deles estão neste README, e o repositório está público.
 - **Dinheiro:** vendas, comissões e disputas só são criadas por funções do banco. O navegador não consegue marcar uma comissão como paga, porque quem faz isso é o webhook do Stripe, que tem a assinatura verificada. A chave secreta do Stripe só existe nas Edge Functions.
 - **As regras de negócio** (estado liberado, limite de anúncios, preço e local obrigatórios para publicar) rodam no banco e não podem ser burladas pelo front.
 
@@ -127,12 +132,13 @@ src/
     auth/        RequireAuth, AuthShell (botão Google)
     cars/        CarCard, CarImage, PhotoManager
     promoter/    PromoKit (links, compartilhar, QR code, kit de divulgação)
+    community/   estrelas, avaliações, denúncias, selo Top Promoter
     layout/      Header, Footer, Layout, DashboardLayout, Logo
     ui/          button, input/select/textarea/field, misc (card, badge, alert, avatar…)
   context/       AuthContext (sessão, perfil, modo ativo)
   hooks/         useDocumentTitle, usePlatformSettings
-  lib/           supabase, cars (busca), listings (CRUD + fotos), promotions (promotores), chat (mensagens e visitas), sales (vendas, comissões, Stripe), zip, referral (cliques), image, utils, constants, types
-  pages/         Home, Cars, CarDetail, ReferralRedirect (/r/CODE), StaticPages, auth/*, dashboard/* (incl. promoter/*)
+  lib/           supabase, cars (busca), listings (CRUD + fotos), promotions (promotores), chat (mensagens e visitas), sales (vendas, comissões, Stripe), community (avaliações e denúncias), admin, zip, referral (cliques), image, utils, constants, types
+  pages/         Home, Cars, CarDetail, ReferralRedirect (/r/CODE), StaticPages, auth/*, dashboard/* (incl. promoter/*), admin/*
 supabase/
   migrations/    SQL das fases (rodar em ordem)
   functions/     notifications (e-mails), stripe-api (Connect + Checkout), stripe-webhook
@@ -144,7 +150,6 @@ O ZIP é convertido em cidade, estado e coordenadas pela API gratuita [Zippopota
 
 ## Próximas fases
 
-5. Avaliações, denúncias e painel admin
 6. Polimento, SEO e performance
 
 > Os textos de Terms of Service e Privacy Policy são modelos e precisam ser revisados por um advogado americano antes do lançamento.

@@ -288,7 +288,11 @@ export default function ListingWizard() {
         ...(publish ? { status: 'active' as const } : {}),
       });
       await saveVin(car.id, form.vin);
-      toast.success(publish ? 'Your car is live! 🎉' : 'Changes saved');
+      toast.success(
+        publish && updated.status === 'pending_review'
+          ? 'Sent for review — we usually approve listings within a few hours.'
+          : publish ? 'Your car is live! 🎉' : 'Changes saved',
+      );
       navigate(publish ? carPath(updated) : '/dashboard/listings');
     } catch (e) {
       setServerError(friendlyDbError((e as Error).message));
@@ -299,7 +303,7 @@ export default function ListingWizard() {
 
   if (loading) return <PageLoader />;
 
-  const isLive = car && car.status !== 'draft';
+  const isLive = car && car.status !== 'draft' && car.status !== 'pending_review';
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -343,6 +347,7 @@ export default function ListingWizard() {
         })}
       </ol>
 
+      {car?.moderation_note && <Alert title="Message from AutoPromo">{car.moderation_note}</Alert>}
       {serverError && <Alert variant="error">{serverError}</Alert>}
 
       <Card className="p-5 sm:p-7">

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, Skeleton } from '@/components/ui/misc';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { ListingRow } from './MyListings';
+import { PendingReviewsCard } from '@/components/community/Community';
 
 export default function Overview() {
   useDocumentTitle('Dashboard');
@@ -81,6 +82,8 @@ export default function Overview() {
           <Button asChild variant="outline"><Link to="/dashboard/promoter">Open promoter dashboard</Link></Button>
         </Card>
       )}
+
+      <PendingReviewsCard role="owner_to_promoter" />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat icon={Rocket} label="Active listings" value={cars ? active : null} />

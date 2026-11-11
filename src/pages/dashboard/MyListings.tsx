@@ -17,6 +17,7 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const STATUS_VARIANT: Record<CarStatus, 'secondary' | 'success' | 'warning' | 'dark' | 'outline'> = {
   draft: 'secondary',
+  pending_review: 'warning',
   active: 'success',
   pending_sale: 'warning',
   sold: 'dark',
@@ -103,8 +104,12 @@ export function ListingRow({ car, compact = false, onChanged }: { car: CarWithPh
   async function changeStatus(status: CarStatus) {
     setBusy(true);
     try {
-      await setListingStatus(car.id, status);
-      toast.success(status === 'active' ? 'Listing is live!' : `Status changed to ${STATUS_LABELS[status]}`);
+      const updated = await setListingStatus(car.id, status);
+      toast.success(
+        updated.status === 'pending_review'
+          ? 'Sent for review — we usually approve listings within a few hours.'
+          : updated.status === 'active' ? 'Listing is live!' : `Status changed to ${STATUS_LABELS[updated.status]}`,
+      );
       setSoldOpen(false);
       onChanged?.();
     } catch (e) {
@@ -140,6 +145,9 @@ export function ListingRow({ car, compact = false, onChanged }: { car: CarWithPh
             {car.price ? formatPrice(car.price) : 'No price yet'} · {formatMiles(car.mileage)}
             {car.city ? ` · ${car.city}, ${car.state}` : ''}
           </p>
+          {car.moderation_note && (
+            <p className="mt-1 rounded bg-amber-50 px-2 py-1 text-xs text-amber-900">AutoPromo: {car.moderation_note}</p>
+          )}
           <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
             <Eye className="size-3.5" /> {car.views.toLocaleString('en-US')} views · {car.car_photos.length} photos
           </p>
@@ -148,6 +156,8 @@ export function ListingRow({ car, compact = false, onChanged }: { car: CarWithPh
           <div className="flex w-full items-center gap-2 sm:w-auto">
             {car.status === 'sold' ? (
               <span className="flex-1 text-sm text-muted-foreground sm:flex-none">Sold{car.sold_price ? ` for ${formatPrice(car.sold_price)}` : ''}</span>
+            ) : car.status === 'pending_review' ? (
+              <span className="flex-1 text-sm text-muted-foreground sm:flex-none">Waiting for approval</span>
             ) : car.status === 'draft' ? (
               <Button size="sm" onClick={() => changeStatus('active')} className="flex-1 sm:flex-none">Publish</Button>
             ) : (

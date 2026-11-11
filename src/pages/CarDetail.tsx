@@ -19,6 +19,7 @@ import { Alert, Avatar, Badge, EmptyState, PageLoader } from '@/components/ui/mi
 import { CarImage } from '@/components/cars/CarImage';
 import { CarCard } from '@/components/cars/CarCard';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { RatingSummary, ReportButton } from '@/components/community/Community';
 
 export default function CarDetail() {
   const { slug = '' } = useParams();
@@ -249,6 +250,7 @@ export default function CarDetail() {
                 <p className="text-xs text-muted-foreground">
                   Private seller · Member since {car.owner ? new Date(car.owner.created_at).getFullYear() : '—'}
                 </p>
+                <RatingSummary userId={car.owner?.id} />
               </div>
               {car.owner?.identity_verified && (
                 <Badge variant="success" className="ml-auto shrink-0"><BadgeCheck />Verified Owner</Badge>
@@ -274,6 +276,7 @@ export default function CarDetail() {
             <button onClick={share} className="mt-3 flex w-full items-center justify-center gap-2 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
               <Share2 className="size-4" /> Share this car
             </button>
+            {!isOwner && <div className="mt-1 text-center"><ReportButton targetType="car" targetId={car.id} /></div>}
             {fromPromoter && !isOwner && (
               <p className="mt-2 text-center text-xs text-muted-foreground">
                 {referrerName ? `Shared with you by ${referrerName}.` : 'You were referred by a promoter.'}

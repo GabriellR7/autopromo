@@ -1,4 +1,4 @@
-export type CarStatus = 'draft' | 'active' | 'pending_sale' | 'sold' | 'paused';
+export type CarStatus = 'draft' | 'pending_review' | 'active' | 'pending_sale' | 'sold' | 'paused';
 export type Transmission = 'automatic' | 'manual' | 'cvt';
 export type FuelType = 'gasoline' | 'diesel' | 'hybrid' | 'plug_in_hybrid' | 'electric' | 'flex';
 export type BodyType =
@@ -72,6 +72,7 @@ export interface Car {
   published_at: string | null;
   sold_at: string | null;
   sold_price: number | null;
+  moderation_note: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -99,4 +100,5 @@ export interface PlatformSettings {
   default_commission_value: number;
   enabled_states: string[];
   max_listings_per_user: number;
+  require_listing_approval: boolean;
 }

@@ -11,6 +11,7 @@ import { carPath, formatDate, timeAgo } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Alert, Avatar, Badge, Card, EmptyState, Skeleton } from '@/components/ui/misc';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { RatingSummary, TopPromoterBadge } from '@/components/community/Community';
 
 export default function OwnerPromoters() {
   useDocumentTitle('Promoters');
@@ -108,6 +109,8 @@ export default function OwnerPromoters() {
                     <p className="font-semibold">{r.promoter?.full_name ?? 'Promoter'}</p>
                     {r.promoter?.identity_verified && <Badge variant="success"><BadgeCheck />Verified</Badge>}
                     {r.promoter && <Badge variant="secondary" className="capitalize">{r.promoter.promoter_level}</Badge>}
+                    {r.promoter?.promoter_level === 'gold' && <TopPromoterBadge />}
+                    <RatingSummary userId={r.promoter?.id} />
                   </div>
                   <p className="text-sm text-muted-foreground">
                     wants to promote{' '}
@@ -149,6 +152,8 @@ export default function OwnerPromoters() {
                     <p className="flex items-center gap-2 font-semibold">
                       {p.promoter_name ?? 'Promoter'}
                       {p.promoter_verified && <BadgeCheck className="size-4 text-success" />}
+                      {p.promoter_level === 'gold' && <TopPromoterBadge />}
+                      <RatingSummary userId={p.promoter_id} />
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {car ? `${car.year} ${car.make} ${car.model}` : 'Your car'} · since {formatDate(p.created_at)}

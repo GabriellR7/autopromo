@@ -9,6 +9,7 @@ const FALLBACK: PlatformSettings = {
   default_commission_value: 300,
   enabled_states: ['TX'],
   max_listings_per_user: 5,
+  require_listing_approval: false,
 };
 
 let cached: PlatformSettings | null = null;

@@ -23,6 +23,14 @@ const Messages = lazy(() => import('@/pages/dashboard/Messages'));
 const Settings = lazy(() => import('@/pages/dashboard/Settings'));
 const OwnerCommissions = lazy(() => import('@/pages/dashboard/OwnerCommissions'));
 const PromoterEarnings = lazy(() => import('@/pages/dashboard/promoter/PromoterEarnings'));
+const AdminLayout = lazy(() => import('@/pages/admin/AdminLayout').then((m) => ({ default: m.AdminLayout })));
+const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard'));
+const AdminListings = lazy(() => import('@/pages/admin/AdminListings'));
+const AdminUsers = lazy(() => import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminUsers })));
+const AdminDisputes = lazy(() => import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminDisputes })));
+const AdminReports = lazy(() => import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminReports })));
+const AdminCommissions = lazy(() => import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminCommissions })));
+const AdminSettings = lazy(() => import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminSettings })));
 const PromoterDashboard = lazy(() => import('@/pages/dashboard/promoter/PromoterDashboard'));
 const PromoterExplore = lazy(() => import('@/pages/dashboard/promoter/PromoterExplore'));
 
@@ -65,6 +73,20 @@ const router = createBrowserRouter([
           { path: 'promoter/explore', element: s(<PromoterExplore />) },
           { path: 'promoter/earnings', element: s(<PromoterEarnings />) },
           { path: 'commissions', element: s(<OwnerCommissions />) },
+        ],
+      },
+
+      {
+        path: '/admin',
+        element: <RequireAuth requireAdmin>{s(<AdminLayout />)}</RequireAuth>,
+        children: [
+          { index: true, element: s(<AdminDashboard />) },
+          { path: 'listings', element: s(<AdminListings />) },
+          { path: 'users', element: s(<AdminUsers />) },
+          { path: 'disputes', element: s(<AdminDisputes />) },
+          { path: 'reports', element: s(<AdminReports />) },
+          { path: 'commissions', element: s(<AdminCommissions />) },
+          { path: 'settings', element: s(<AdminSettings />) },
         ],
       },
 

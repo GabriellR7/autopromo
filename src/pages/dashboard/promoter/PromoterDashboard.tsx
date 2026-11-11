@@ -15,6 +15,7 @@ import { CarImage } from '@/components/cars/CarImage';
 import { ShareButtons } from '@/components/promoter/PromoKit';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import PromoterSetup from './PromoterSetup';
+import { PendingReviewsCard, RatingSummary, TopPromoterBadge } from '@/components/community/Community';
 
 const LEVEL_STYLE = {
   bronze: 'bg-amber-100 text-amber-800',
@@ -90,6 +91,8 @@ export default function PromoterDashboard() {
             <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold capitalize ${LEVEL_STYLE[profile.promoter_level]}`}>
               {profile.promoter_level}
             </span>
+            {profile.promoter_level === 'gold' && <TopPromoterBadge />}
+            <RatingSummary userId={profile.id} />
           </div>
           <p className="text-muted-foreground">Share your links, track your clicks and grow your earnings.</p>
         </div>
@@ -106,6 +109,7 @@ export default function PromoterDashboard() {
         </Alert>
       )}
       {error && <Alert variant="error">{error}</Alert>}
+      <PendingReviewsCard role="promoter_to_owner" />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat icon={MousePointerClick} label="Total clicks" value={promos ? totals.clicks : null} hint={promos ? `${totals.week} in the last 7 days` : undefined} />

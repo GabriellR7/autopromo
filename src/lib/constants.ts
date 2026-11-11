@@ -39,6 +39,7 @@ export const BODY_TYPES: { value: BodyType; label: string }[] = [
 
 export const STATUS_LABELS: Record<CarStatus, string> = {
   draft: 'Draft',
+  pending_review: 'In review',
   active: 'Active',
   pending_sale: 'Pending sale',
   sold: 'Sold',

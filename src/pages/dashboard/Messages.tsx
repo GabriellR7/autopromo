@@ -19,6 +19,7 @@ import { Alert, Avatar, Badge, EmptyState, PageLoader, Skeleton } from '@/compon
 import { Dialog } from '@/components/ui/dialog';
 import { CarImage } from '@/components/cars/CarImage';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { ReportButton } from '@/components/community/Community';
 
 export default function Messages() {
   useDocumentTitle('Messages');
@@ -236,6 +237,7 @@ function Thread({ conversation: c, userId, onChanged }: { conversation: Conversa
           <p className="truncate text-sm font-semibold">{c.other_name ?? 'User'} <Badge variant="secondary" className="ml-1">{ROLE_LABEL[c.other_role]}</Badge></p>
           <Link to={`/cars/${c.car_public_id}`} className="truncate text-xs text-muted-foreground hover:text-primary">{c.car_title}</Link>
         </div>
+        <ReportButton targetType="user" targetId={c.other_id} label="Report" />
         <CarImage src={c.car_cover} alt="" className="hidden h-10 w-14 rounded-md sm:block" />
       </header>
 
