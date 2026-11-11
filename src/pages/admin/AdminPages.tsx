@@ -1,11 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { BadgeCheck, Ban, Check, Flag, Receipt, Scale, Search, Shield, Users } from 'lucide-react';
+import { BadgeCheck, Ban, Check, Flag, Gift, Receipt, Scale, Search, Shield, Users } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import {
   adminCommissions, adminDisputes, adminReports, adminResolveDispute, adminResolveReport, adminSetCommissionStatus,
-  adminUpdateUser, adminUsers, fetchSettings, saveSettings,
+  adminCompSubscription, adminUpdateUser, adminUsers, fetchSettings, saveSettings,
   type AdminCommission, type AdminDispute, type AdminReport, type AdminUser,
 } from '@/lib/admin';
 import { DISPUTE_LABEL, cents, estimateCommissionCents, type CommissionStatus, type DisputeStatus } from '@/lib/sales';
@@ -65,6 +65,19 @@ export function AdminUsers() {
     }
   }
 
+  async function giveFreeAccess(u: AdminUser) {
+    const raw = window.prompt(`Give ${u.email} free seller access for how many days?`, '30');
+    if (raw === null) return;
+    const days = Number(raw);
+    if (!Number.isFinite(days) || days <= 0 || days > 3650) return toast.error('Enter a number of days between 1 and 3650.');
+    try {
+      await adminCompSubscription(u.id, new Date(Date.now() + days * 86_400_000).toISOString());
+      toast.success(`Free access given for ${days} days`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -111,6 +124,9 @@ export function AdminUsers() {
                 )}
                 <Button size="sm" variant="outline" onClick={() => update(u, { identity_verified: !u.identity_verified })}>
                   {u.identity_verified ? 'Unverify' : <><BadgeCheck /> Verify</>}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => giveFreeAccess(u)}>
+                  <Gift /> Free access
                 </Button>
                 {u.id !== me?.id && (
                   <>
@@ -358,7 +374,7 @@ export function AdminCommissions() {
       <div className="grid gap-3 sm:grid-cols-3">
         <Card className="p-4"><p className="text-xs text-muted-foreground">Pending</p><p className="text-xl font-bold">{cents(totals.pending)}</p></Card>
         <Card className="p-4"><p className="text-xs text-muted-foreground">Paid</p><p className="text-xl font-bold">{cents(totals.paid)}</p></Card>
-        <Card className="p-4"><p className="text-xs text-muted-foreground">Platform revenue</p><p className="text-xl font-bold text-success">{cents(totals.revenue)}</p></Card>
+        <Card className="p-4"><p className="text-xs text-muted-foreground">Platform fees</p><p className="text-xl font-bold text-success">{cents(totals.revenue)}</p><p className="text-[11px] text-muted-foreground">0% fee today — owners pay a monthly plan instead</p></Card>
       </div>
       <Pills options={['all', 'pending', 'paid', 'cancelled'] as (CommissionStatus | 'all')[]} value={status} onChange={setStatus} label={(v) => v[0]!.toUpperCase() + v.slice(1)} />
       {error && <Alert variant="error">{error}</Alert>}
@@ -379,7 +395,7 @@ export function AdminCommissions() {
               </div>
               <div className="text-right">
                 <p className="font-bold">{cents(c.amount_cents)}</p>
-                <p className="text-xs text-muted-foreground">fee {cents(c.platform_fee_cents)}</p>
+                {c.platform_fee_cents > 0 && <p className="text-xs text-muted-foreground">fee {cents(c.platform_fee_cents)}</p>}
               </div>
               <Badge variant={c.status === 'paid' ? 'success' : c.status === 'pending' ? 'warning' : 'secondary'}>{c.status}</Badge>
               {c.status === 'pending' && (
@@ -422,6 +438,8 @@ export function AdminSettings() {
         enabled_states: s.enabled_states,
         max_listings_per_user: s.max_listings_per_user,
         require_listing_approval: s.require_listing_approval,
+        owner_subscription_price_cents: s.owner_subscription_price_cents,
+        owner_trial_days: s.owner_trial_days,
       });
       toast.success('Settings saved');
     } catch (err) {
@@ -442,7 +460,16 @@ export function AdminSettings() {
         <p className="text-muted-foreground">Changes apply immediately to new listings and sales.</p>
       </div>
       <Card className="grid gap-5 p-6 sm:grid-cols-2">
-        <Field label="Platform fee (% of each commission)" htmlFor="fee">
+        <Field label="Seller plan price (USD / month)" htmlFor="price">
+          <Input id="price" type="number" min={0} step="0.01" value={s.owner_subscription_price_cents / 100} onChange={(e) => setS({ ...s, owner_subscription_price_cents: Math.round(Number(e.target.value) * 100) })} />
+        </Field>
+        <Field label="Free trial (days)" htmlFor="trial">
+          <Input id="trial" type="number" min={0} max={365} value={s.owner_trial_days} onChange={(e) => setS({ ...s, owner_trial_days: Number(e.target.value) })} />
+        </Field>
+        <p className="-mt-2 text-xs text-muted-foreground sm:col-span-2">
+          Price changes apply to new subscriptions. Existing subscribers keep the price they signed up with in Stripe.
+        </p>
+        <Field label="Platform fee on commissions (%) — 0 = all to promoter" htmlFor="fee">
           <Input id="fee" type="number" min={0} max={100} step="0.5" value={s.platform_fee_percent} onChange={(e) => setS({ ...s, platform_fee_percent: Number(e.target.value) })} />
         </Field>
         <Field label="Max open listings per user" htmlFor="max">

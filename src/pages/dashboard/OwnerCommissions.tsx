@@ -65,7 +65,7 @@ export default function OwnerCommissions() {
             <p className="text-2xl font-bold">{cents(owed)}</p>
           </div>
           <p className="max-w-md text-sm text-muted-foreground">
-            Paying is quick and secure (card via Stripe). The promoter receives their share directly; AutoPromo keeps a small platform fee.
+            Paying is quick and secure (card via Stripe). The full amount goes straight to the promoter — AutoPromo takes no cut.
           </p>
         </Card>
       )}

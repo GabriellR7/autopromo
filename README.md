@@ -23,12 +23,13 @@ O site está todo em inglês americano (USD, milhas, MM/DD/YYYY).
 | Atribuição (Fase 3) | Conversas abertas com o cookie `?ref=` ficam ligadas ao promotor, e o painel dele mostra cliques, chats e visitas por carro |
 | E-mails (Fase 3) | Edge Function `notifications` (já publicada) envia aviso de mensagem não lida (após 10 min) e lembretes 24h e 1h antes da visita. **Ativação abaixo** |
 | Venda (Fase 4) | "Mark as sold" pede o preço final, **quem comprou** (entre as conversas) e **qual promotor indicou**. Se o comprador veio pelo link de um promotor, ele é creditado automaticamente. Um carro só vira "vendido" por esse fluxo (regra no banco) e não pode ser reaberto |
-| Comissões (Fase 4) | A comissão é calculada pelo banco (fixa ou % do preço final), menos a taxa da plataforma (`platform_fee_percent`). O dono paga com cartão pelo **Stripe Checkout**, o valor vai direto para a conta Stripe do promotor e a taxa fica com o AutoPromo (*destination charge*) |
+| Comissões (Fase 4) | A comissão é calculada pelo banco (fixa ou % do preço final). O dono paga com cartão pelo **Stripe Checkout** e o valor vai **100% para a conta Stripe do promotor** (*destination charge*). A taxa da plataforma (`platform_fee_percent`) está em **0%**, mas pode ser ligada no admin |
+| Plano do vendedor | Cada conta de dono paga **US$ 10/mês** (até 5 anúncios) pelo **Stripe Billing**, com **30 dias grátis** que começam no 1º anúncio publicado. Tela **Billing** (`/dashboard/billing`) para assinar, trocar cartão e cancelar (Customer Portal). Sem plano ativo, o banco **esconde os anúncios** e bloqueia novas publicações; voltando a pagar, eles reaparecem. Avisos de fim do teste (5 dias antes) e de pagamento falhou (3 dias de carência). Admin vê MRR, testes e atrasados e pode dar **acesso grátis** a um usuário |
 | Recebimento (Fase 4) | Em **Earnings**, o promotor cadastra o recebimento pelo **Stripe Connect Express** (identidade + banco americano) e vê o que tem a receber e o que já recebeu. O nível sobe com as vendas: Silver com 3, Gold com 10 |
 | Disputas (Fase 4) | Se o dono marcar como vendido sem creditar um promotor que trouxe compradores pelo chat, **abre uma revisão automática**. O promotor também pode pedir revisão em até 30 dias. A decisão fica no painel admin (Fase 5) |
 | Avaliações (Fase 5) | Depois de uma venda com promotor creditado, dono e promotor avaliam um ao outro (1 a 5 estrelas + comentário). A nota aparece na página do carro, nos pedidos de promotores e no painel do promotor. Selo **Top Promoter** para nível Gold ou nota 4.8+ com pelo menos 5 avaliações |
 | Denúncias (Fase 5) | Botão "Report" no anúncio e no chat (golpe, informação falsa, não é o dono etc.), com limite de 10 por dia por pessoa |
-| Painel admin (Fase 5) | Em `/admin`: números da plataforma, **aprovação de anúncios** (opcional), usuários (verificar, suspender, nível, admin), **decisão de disputas** (creditar o promotor gera a comissão), denúncias, comissões (marcar paga ou cancelar) e configurações (taxa, comissão sugerida, limite de anúncios, **estados liberados**) |
+| Painel admin (Fase 5) | Em `/admin`: números da plataforma, **aprovação de anúncios** (opcional), usuários (verificar, suspender, nível, admin), **decisão de disputas** (creditar o promotor gera a comissão), denúncias, comissões (marcar paga ou cancelar) e configurações (preço do plano, dias grátis, taxa, comissão sugerida, limite de anúncios, **estados liberados**) |
 | SEO (Fase 6) | Título, descrição, link canônico, Open Graph e Twitter por página. Dados estruturados (schema.org `Car` + `Offer`) na página do carro. URLs amigáveis (`/cars/2019-honda-civic-austin-tx-1`). `robots.txt`, **sitemap dinâmico** (`/sitemap.xml`, via Edge Function `sitemap`) e imagem padrão de compartilhamento. Páginas privadas com `noindex` |
 | Performance (Fase 6) | Banco: regras de acesso otimizadas e 18 índices novos (avisos do Supabase zerados). Site: painel e admin em arquivos separados, bibliotecas grandes em cache próprio, cache longo dos arquivos do build, conexão antecipada com o Supabase, tela de erro com recarga automática depois de um deploy, manifest e ícones de app |
 | Banco | Tabelas, RLS, regras no banco (limite de anúncios, estados liberados, máx. 20 fotos), busca geográfica, contador de visualizações, bucket de fotos |
@@ -92,14 +93,15 @@ Para publicar: `npm run build` gera a pasta `dist/`. O arquivo `public/_redirect
 2. Em **Developers → API keys**, copie a **Secret key** (`sk_test_...` no modo de teste).
 3. Em **Developers → Webhooks → Add endpoint**:
    - URL: `https://scvdvwryiuthnzwsyade.supabase.co/functions/v1/stripe-webhook`
-   - Evento **da sua conta**: `checkout.session.completed` → copie o *Signing secret* (`whsec_...`)
+   - Eventos **da sua conta**: `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated` e `customer.subscription.deleted` → copie o *Signing secret* (`whsec_...`)
    - Crie **um segundo endpoint** com a mesma URL, marcando "Listen to events on **Connected accounts**", evento `account.updated` → copie o segundo *Signing secret*
 4. No Supabase, em **Edge Functions → Secrets**:
    - `STRIPE_SECRET_KEY` = `sk_test_...`
    - `STRIPE_WEBHOOK_SECRET` = o whsec do 1º endpoint
    - `STRIPE_CONNECT_WEBHOOK_SECRET` = o whsec do 2º endpoint
    - `SITE_URL` = endereço do site (o mesmo dos e-mails)
-5. Para testar: entre como promotor → Earnings → **Set up payouts** (no modo de teste o Stripe aceita dados fictícios, como SSN `000-00-0000` e banco de teste). Depois entre como dono → Commissions → **Pay now** com o cartão `4242 4242 4242 4242`.
+5. Em **Settings → Billing → Customer portal**, clique em **Activate** e deixe ligado "cancelar assinatura" e "atualizar forma de pagamento". É a tela que abre no botão *Manage billing*.
+6. Para testar: entre como dono → **Billing → Subscribe** com o cartão `4242 4242 4242 4242`. Entre como promotor → Earnings → **Set up payouts** (no modo de teste o Stripe aceita dados fictícios, como SSN `000-00-0000` e banco de teste). Depois entre como dono → Commissions → **Pay now** com o cartão `4242 4242 4242 4242`.
 
 ## 5. Configurações da plataforma
 
@@ -110,7 +112,9 @@ A tabela `platform_settings` (uma linha só) controla:
 | `enabled_states` | `{TX}` | Estados onde é possível publicar. Ex.: `update platform_settings set enabled_states = '{TX,FL}';` |
 | `max_listings_per_user` | `5` | Máximo de anúncios abertos por pessoa |
 | `default_commission_type` / `default_commission_value` | `fixed` / `300` | Comissão sugerida no wizard |
-| `platform_fee_percent` | `10` | Taxa da plataforma sobre a comissão (usada na Fase 4) |
+| `platform_fee_percent` | `0` | Taxa da plataforma sobre a comissão (0 = tudo para o promotor) |
+| `owner_subscription_price_cents` | `1000` | Preço mensal do plano do vendedor, em centavos (US$ 10) |
+| `owner_trial_days` | `30` | Dias grátis antes da primeira cobrança |
 
 Na Fase 5 isso vira uma tela no painel admin.
 
@@ -145,7 +149,7 @@ src/
   pages/         Home, Cars, CarDetail, ReferralRedirect (/r/CODE), StaticPages, auth/*, dashboard/* (incl. promoter/*), admin/*
 supabase/
   migrations/    SQL das fases (rodar em ordem)
-  functions/     notifications (e-mails), stripe-api (Connect + Checkout), stripe-webhook, sitemap
+  functions/     notifications (e-mails), stripe-api (Connect + Checkout + assinatura), stripe-webhook, sitemap
   seed*.sql      dados de teste
   cron_notifications.sql  agendamento dos e-mails
 ```

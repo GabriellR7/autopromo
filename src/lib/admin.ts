@@ -105,6 +105,18 @@ async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
 }
 
 export const adminStats = () => rpc<AdminStats>('admin_stats');
+
+export interface SubscriptionStats {
+  trialing: number;
+  paying: number;
+  past_due: number;
+  expired: number;
+  mrr_cents: number;
+}
+export const adminSubscriptionStats = () => rpc<SubscriptionStats>('admin_subscription_stats');
+/** Gives an owner free access until the given date (ISO). */
+export const adminCompSubscription = (userId: string, until: string) =>
+  rpc<void>('admin_comp_subscription', { p_user_id: userId, p_until: until });
 export const adminUsers = (search: string, offset = 0) =>
   rpc<AdminUser[]>('admin_list_users', { p_search: search || null, p_limit: 50, p_offset: offset });
 export const adminUpdateUser = (

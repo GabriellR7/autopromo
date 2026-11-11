@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { Alert, Card, Checkbox, PageLoader } from '@/components/ui/misc';
 import { PhotoManager } from '@/components/cars/PhotoManager';
+import { PlanBanner } from '@/components/billing/PlanBanner';
 
 const STEPS = ['Vehicle', 'Photos', 'Price & fee', 'Location & details', 'Review'];
 const currentYear = new Date().getFullYear();
@@ -318,6 +319,7 @@ export default function ListingWizard() {
           </p>
         )}
       </div>
+      <PlanBanner />
 
       {/* Stepper */}
       <ol className="scrollbar-none flex gap-2 overflow-x-auto">

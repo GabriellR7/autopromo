@@ -18,7 +18,7 @@ const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 25 }, (_, i) => currentYear + 1 - i);
 
 export default function Home() {
-  useDocumentTitle('Sell your car faster', 'List your car for free on AutoPromo. Local promoters share it with their network and earn a referral fee only when it sells. Buy used cars directly from owners in Texas.');
+  useDocumentTitle('Sell your car faster', 'List your car on AutoPromo — free for 30 days, then $10/month. Local promoters share it with their network and earn a referral fee only when it sells. Buy used cars directly from owners in Texas.');
   const navigate = useNavigate();
   const { user } = useAuth();
   const [featured, setFeatured] = useState<CarWithPhotos[] | null>(null);
@@ -60,8 +60,8 @@ export default function Home() {
               Sell your car faster. <span className="text-blue-400">Let promoters find your buyer.</span>
             </h1>
             <p className="mt-5 max-w-2xl text-lg text-slate-300">
-              List your car for free. Local promoters share it with their network and earn a referral fee only
-              when it sells — you close the deal directly with the buyer.
+              Try it free for 30 days, then just $10/month. Local promoters share your car with their network and
+              earn a referral fee only when it sells — you close the deal directly with the buyer.
             </p>
           </div>
         </div>
@@ -157,7 +157,7 @@ export default function Home() {
               badge="For car owners"
               icon={Car}
               steps={[
-                { icon: Camera, title: 'List your car for free', text: 'Add photos, price and the referral fee you’ll pay if a promoter brings the buyer.' },
+                { icon: Camera, title: 'List your car', text: 'Free for 30 days, then $10/month. Add photos, price and the referral fee you’ll pay if a promoter brings the buyer.' },
                 { icon: Users, title: 'Promoters share it', text: 'Local promoters post your car on social media, groups and to people they know.' },
                 { icon: Handshake, title: 'Sell directly', text: 'Meet the buyer, close the deal and transfer the title yourself. Pay the fee only if it sells.' },
               ]}
@@ -206,7 +206,7 @@ export default function Home() {
           <div className="absolute -right-10 -top-10 size-48 rounded-full bg-primary/30 blur-3xl" />
           <BadgeCheck className="size-8 text-blue-400" />
           <h3 className="mt-4 text-2xl font-bold">Sell your car faster</h3>
-          <p className="mt-2 max-w-md text-slate-300">Free to list. You set the price and the referral fee. Pay nothing unless a promoter brings your buyer.</p>
+          <p className="mt-2 max-w-md text-slate-300">First 30 days free, then $10/month — cancel anytime. You set the price and the referral fee, and the fee is only due if a promoter brings your buyer.</p>
           <Button asChild variant="white" size="lg" className="mt-6">
             <Link to={user ? '/dashboard/listings/new' : '/signup'}>List your car <ArrowRight /></Link>
           </Button>

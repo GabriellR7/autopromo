@@ -101,4 +101,6 @@ export interface PlatformSettings {
   enabled_states: string[];
   max_listings_per_user: number;
   require_listing_approval: boolean;
+  owner_subscription_price_cents: number;
+  owner_trial_days: number;
 }

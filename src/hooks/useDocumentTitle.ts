@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 
 const SITE_NAME = 'AutoPromo';
 const DEFAULT_DESCRIPTION =
-  'AutoPromo connects car owners with local promoters who help find buyers. List your car for free or earn referral commissions.';
+  'AutoPromo connects car owners with local promoters who help find buyers. List your car free for 30 days or earn referral commissions.';
 
 interface SeoOptions {
   /** Absolute or root-relative image for social previews. */

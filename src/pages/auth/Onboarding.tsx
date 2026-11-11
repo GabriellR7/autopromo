@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import type { ActiveMode } from '@/lib/types';
 
 const OPTIONS: { mode: ActiveMode; icon: LucideIcon; title: string; text: string }[] = [
-  { mode: 'owner', icon: Car, title: 'I want to sell my car', text: 'List your car for free and let local promoters help you find a buyer.' },
+  { mode: 'owner', icon: Car, title: 'I want to sell my car', text: 'List your car (30 days free) and let local promoters help you find a buyer.' },
   { mode: 'promoter', icon: BadgeDollarSign, title: 'I want to earn as a Promoter', text: 'Share cars with your network and earn a referral commission when they sell.' },
   { mode: 'buyer', icon: Search, title: "I'm just looking", text: 'Browse cars near you, save favorites and contact sellers.' },
 ];

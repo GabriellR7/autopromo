@@ -11,6 +11,7 @@ import { Card, Skeleton } from '@/components/ui/misc';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { ListingRow } from './MyListings';
 import { PendingReviewsCard } from '@/components/community/Community';
+import { PlanBanner } from '@/components/billing/PlanBanner';
 
 export default function Overview() {
   useDocumentTitle('Dashboard');
@@ -46,6 +47,7 @@ export default function Overview() {
           <Link to="/dashboard/listings/new"><Plus /> List a car</Link>
         </Button>
       </div>
+      <PlanBanner />
 
       {owed > 0 && (
         <Card className="flex flex-col gap-4 border-amber-300 bg-amber-50 p-5 sm:flex-row sm:items-center">

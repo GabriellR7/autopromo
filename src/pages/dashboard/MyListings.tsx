@@ -14,6 +14,7 @@ import { SaleDialog } from '@/components/cars/SaleDialog';
 import { Badge, Card, EmptyState, Skeleton } from '@/components/ui/misc';
 import { CarImage } from '@/components/cars/CarImage';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { PlanBanner } from '@/components/billing/PlanBanner';
 
 const STATUS_VARIANT: Record<CarStatus, 'secondary' | 'success' | 'warning' | 'dark' | 'outline'> = {
   draft: 'secondary',
@@ -56,6 +57,7 @@ export default function MyListings() {
         </div>
         <Button asChild><Link to="/dashboard/listings/new"><Plus /> New listing</Link></Button>
       </div>
+      <PlanBanner />
 
       {cars && cars.length > 0 && (
         <div className="scrollbar-none flex gap-2 overflow-x-auto">
@@ -83,7 +85,7 @@ export default function MyListings() {
         <EmptyState
           icon={Car}
           title="No listings yet"
-          description="Create your first listing — it's free and takes about 5 minutes."
+          description="Create your first listing — it takes about 5 minutes and starts your 30-day free trial."
           action={<Button asChild><Link to="/dashboard/listings/new">List a car</Link></Button>}
         />
       ) : (

@@ -2,8 +2,10 @@
 // Edge Function: stripe-webhook  (called by Stripe, not by the site)
 //
 // Events handled:
-//   checkout.session.completed  → marks the commission as paid
-//   account.updated             → updates the promoter's payout status
+//   checkout.session.completed      → marks the commission as paid
+//   customer.subscription.*         → owner plan status / access (created,
+//                                     updated, deleted)
+//   account.updated                 → updates the promoter's payout status
 //
 // Secrets: STRIPE_WEBHOOK_SECRET (platform endpoint) and, optionally,
 // STRIPE_CONNECT_WEBHOOK_SECRET (endpoint for "connected accounts" events).
@@ -63,6 +65,30 @@ Deno.serve(async (req) => {
           .update({ status: 'paid', paid_at: new Date().toISOString(), stripe_payment_intent_id: obj.payment_intent as string })
           .eq('id', commissionId)
           .eq('status', 'pending');
+      }
+    }
+
+    if (event.type.startsWith('customer.subscription.')) {
+      const meta = (obj.metadata as Record<string, string> | undefined) ?? {};
+      let userId = meta.user_id;
+      if (!userId) {
+        const { data } = await db.from('subscriptions').select('user_id').eq('stripe_customer_id', obj.customer as string).maybeSingle();
+        userId = data?.user_id;
+      }
+      if (userId) {
+        // Newer Stripe API versions moved current_period_end onto the subscription items.
+        const items = (obj.items as { data?: { current_period_end?: number }[] } | undefined)?.data ?? [];
+        const periodEnd = (obj.current_period_end as number | undefined) ?? items[0]?.current_period_end;
+        const status = event.type === 'customer.subscription.deleted' ? 'canceled' : (obj.status as string);
+        const { error } = await db.rpc('apply_stripe_subscription', {
+          p_user_id: userId,
+          p_customer_id: obj.customer as string,
+          p_subscription_id: obj.id as string,
+          p_stripe_status: status,
+          p_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+          p_cancel_at_period_end: Boolean(obj.cancel_at_period_end),
+        });
+        if (error) throw error;
       }
     }
 

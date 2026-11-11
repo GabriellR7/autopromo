@@ -4,12 +4,14 @@ import type { PlatformSettings } from '@/lib/types';
 
 const FALLBACK: PlatformSettings = {
   id: 1,
-  platform_fee_percent: 10,
+  platform_fee_percent: 0,
   default_commission_type: 'fixed',
   default_commission_value: 300,
   enabled_states: ['TX'],
   max_listings_per_user: 5,
   require_listing_approval: false,
+  owner_subscription_price_cents: 1000,
+  owner_trial_days: 30,
 };
 
 let cached: PlatformSettings | null = null;

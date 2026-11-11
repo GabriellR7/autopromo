@@ -139,7 +139,7 @@ export default function PromoterEarnings() {
                 <div className="min-w-0 flex-1">
                   <Link to={`/cars/${c.car_public_id}`} className="font-semibold hover:text-primary">{c.car_title}</Link>
                   <p className="text-sm text-muted-foreground">
-                    Owner: {c.owner_name ?? '—'} · sold {formatDate(c.created_at)} · fee {cents(c.amount_cents)} − platform {cents(c.platform_fee_cents)}
+                    Owner: {c.owner_name ?? '—'} · sold {formatDate(c.created_at)} · fee {cents(c.amount_cents)}{c.platform_fee_cents > 0 ? ` − platform ${cents(c.platform_fee_cents)}` : ''}
                   </p>
                 </div>
                 <p className="text-lg font-bold text-success">{cents(c.promoter_amount_cents)}</p>

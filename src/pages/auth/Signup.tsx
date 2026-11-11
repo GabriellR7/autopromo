@@ -71,7 +71,7 @@ export default function Signup() {
   return (
     <AuthShell
       title="Create your account"
-      subtitle="Sell your car faster or earn commissions as a promoter. It's free."
+      subtitle="Sell your car faster (30 days free) or earn commissions as a promoter."
       footer={
         <>
           Already have an account?{' '}

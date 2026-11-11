@@ -6,10 +6,13 @@
 //   connect_refresh    → promoter: re-sync payout status from Stripe
 //   connect_dashboard  → promoter: one-time link to their Stripe Express dashboard
 //   checkout           → owner: pay a pending commission { commission_id }
+//   subscribe          → owner: start the $10/month plan (billing starts when
+//                        the free trial ends)
+//   billing_portal     → owner: manage card / cancel the plan
 //
-// Money flow (destination charge): the owner pays the referral fee with a card;
-// Stripe sends it to the promoter's connected account and keeps the platform
-// fee for AutoPromo automatically.
+// Commission flow (destination charge): the owner pays the referral fee with a
+// card and Stripe sends it to the promoter's connected account. AutoPromo keeps
+// a platform fee only if platform_fee_percent > 0 (currently 0%).
 //
 // Secrets: STRIPE_SECRET_KEY, SITE_URL
 // =============================================================================
@@ -163,7 +166,7 @@ Deno.serve(async (req) => {
             },
           }],
           payment_intent_data: {
-            application_fee_amount: c.platform_fee_cents,
+            ...(c.platform_fee_cents > 0 ? { application_fee_amount: c.platform_fee_cents } : {}),
             transfer_data: { destination: dest.stripe_account_id },
             metadata: { commission_id: c.id },
             description: `AutoPromo referral fee — ${title}`,
@@ -174,6 +177,68 @@ Deno.serve(async (req) => {
         });
         await db.from('commissions').update({ stripe_checkout_session_id: session.id }).eq('id', c.id);
         return json({ url: session.url });
+      }
+
+      case 'subscribe': {
+        const { data: settings } = await db.from('platform_settings').select('owner_subscription_price_cents, owner_trial_days').eq('id', 1).single();
+        const { data: sub } = await db.from('subscriptions').select('*').eq('user_id', user.id).maybeSingle();
+        if (sub?.status === 'active' && sub.stripe_subscription_id && new Date(sub.access_until) > new Date()) {
+          throw new HttpError(400, 'Your plan is already active.');
+        }
+
+        let customerId = sub?.stripe_customer_id as string | undefined;
+        if (!customerId) {
+          const customer = await stripe<{ id: string }>('POST', '/customers', {
+            email: user.email,
+            name: profile.full_name ?? undefined,
+            metadata: { user_id: user.id },
+          });
+          customerId = customer.id;
+          // Remember the customer so retries don't create duplicates (only if a plan row already exists,
+          // so an abandoned checkout never uses up the free trial).
+          if (sub) await db.from('subscriptions').update({ stripe_customer_id: customerId }).eq('user_id', user.id);
+        }
+
+        // Keep the free trial: Stripe only charges when it ends. Owners who never published yet
+        // get the full trial here too.
+        const trialSeconds = (settings?.owner_trial_days ?? 30) * 86400;
+        const trialEnd = sub?.trial_ends_at
+          ? Math.floor(new Date(sub.trial_ends_at).getTime() / 1000)
+          : sub ? 0 : Math.floor(Date.now() / 1000) + trialSeconds;
+        const keepTrial = trialEnd > Math.floor(Date.now() / 1000) + 48 * 3600; // Stripe needs ≥ 48h ahead
+
+        const session = await stripe<{ url: string }>('POST', '/checkout/sessions', {
+          mode: 'subscription',
+          customer: customerId,
+          line_items: [{
+            quantity: 1,
+            price_data: {
+              currency: 'usd',
+              unit_amount: settings?.owner_subscription_price_cents ?? 1000,
+              recurring: { interval: 'month' },
+              product_data: { name: 'AutoPromo Seller plan', description: 'Up to 5 active listings, promoters, chat and visit scheduling.' },
+            },
+          }],
+          subscription_data: {
+            metadata: { user_id: user.id },
+            ...(keepTrial ? { trial_end: trialEnd } : {}),
+          },
+          metadata: { user_id: user.id },
+          allow_promotion_codes: true,
+          success_url: `${SITE_URL}/dashboard/billing?subscribed=1`,
+          cancel_url: `${SITE_URL}/dashboard/billing?cancelled=1`,
+        });
+        return json({ url: session.url });
+      }
+
+      case 'billing_portal': {
+        const { data: sub } = await db.from('subscriptions').select('stripe_customer_id').eq('user_id', user.id).maybeSingle();
+        if (!sub?.stripe_customer_id) throw new HttpError(400, 'You don\'t have a plan yet.');
+        const portal = await stripe<{ url: string }>('POST', '/billing_portal/sessions', {
+          customer: sub.stripe_customer_id,
+          return_url: `${SITE_URL}/dashboard/billing`,
+        });
+        return json({ url: portal.url });
       }
 
       default:
