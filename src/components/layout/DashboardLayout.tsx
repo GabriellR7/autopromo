@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { BadgeDollarSign, Car, CreditCard, LayoutDashboard, MessageSquare, Plus, Receipt, Search, Settings, Users, Wallet, type LucideIcon } from 'lucide-react';
+import { BadgeDollarSign, Car, CreditCard, Heart, LayoutDashboard, MessageSquare, Plus, Receipt, Search, Settings, Users, Wallet, type LucideIcon } from 'lucide-react';
 import { useUnreadCount } from '@/hooks/useUnreadCount';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
@@ -27,6 +27,7 @@ export function DashboardLayout() {
   const unread = useUnreadCount(user?.id);
   const COMMON: Item[] = [
     { to: '/dashboard/messages', label: 'Messages', icon: MessageSquare, badge: unread },
+    { to: '/dashboard/saved', label: 'Saved', icon: Heart },
     { to: '/dashboard/settings', label: 'Settings', icon: Settings },
   ];
   const promoterFirst = profile?.active_mode === 'promoter';

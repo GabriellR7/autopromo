@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, SearchX, SlidersHorizontal, X } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
+import { Bell, ChevronLeft, ChevronRight, SearchX, SlidersHorizontal, X } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { createSavedSearch } from '@/lib/saved';
 import {
   PAGE_SIZE, SORT_OPTIONS, filtersFromParams, paramsFromFilters, searchCars, type CarFilters, type SortOption,
 } from '@/lib/cars';
@@ -77,6 +80,31 @@ export default function Cars() {
     };
   }, [filters, activeOrigin, zipPending]);
 
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [savingSearch, setSavingSearch] = useState(false);
+  const [savedKey, setSavedKey] = useState<string | null>(null);
+
+  async function saveSearch() {
+    if (!user) {
+      toast.info('Sign in to get an email when a matching car is listed.');
+      navigate('/login', { state: { from: `/cars?${params.toString()}` } });
+      return;
+    }
+    setSavingSearch(true);
+    try {
+      await createSavedSearch(user.id, filters, activeOrigin);
+      setSavedKey(params.toString());
+      toast.success("Search saved — we'll email you new matches once a day.", {
+        action: { label: 'View', onClick: () => navigate('/dashboard/saved') },
+      });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSavingSearch(false);
+    }
+  }
+
   function update(patch: Partial<CarFilters>, resetPage = true) {
     const next = { ...filters, ...patch, ...(resetPage ? { page: 1 } : {}) };
     setParams(paramsFromFilters(next));
@@ -97,7 +125,10 @@ export default function Cars() {
             {activeOrigin && filters.radius ? ` within ${filters.radius} mi of ${activeOrigin.city}, ${activeOrigin.state}` : ''}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={saveSearch} loading={savingSearch} disabled={savedKey === params.toString()}>
+            <Bell /> {savedKey === params.toString() ? 'Search saved' : 'Save search'}
+          </Button>
           <Button variant="outline" className="lg:hidden" onClick={() => setPanelOpen(true)}>
             <SlidersHorizontal /> Filters{activeCount ? ` (${activeCount})` : ''}
           </Button>
@@ -163,8 +194,13 @@ export default function Cars() {
             <EmptyState
               icon={SearchX}
               title="No cars match your search"
-              description="Try removing some filters or increasing the distance."
-              action={<Button variant="outline" onClick={() => setParams(new URLSearchParams())}>Clear all filters</Button>}
+              description="Try removing some filters or increasing the distance — or save this search and we'll email you when a match is listed."
+              action={
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button onClick={saveSearch} loading={savingSearch} disabled={savedKey === params.toString()}><Bell /> Alert me</Button>
+                  <Button variant="outline" onClick={() => setParams(new URLSearchParams())}>Clear all filters</Button>
+                </div>
+              }
             />
           )}
 

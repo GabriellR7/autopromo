@@ -69,6 +69,9 @@ export interface Car {
   commission_value: number;
   allow_any_verified_promoter: boolean;
   views: number;
+  /** Set by the database when the owner lowers the price (shown as "was $X"). */
+  previous_price: number | null;
+  price_dropped_at: string | null;
   published_at: string | null;
   sold_at: string | null;
   sold_price: number | null;

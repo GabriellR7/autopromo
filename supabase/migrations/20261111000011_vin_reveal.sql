@@ -14,6 +14,7 @@ create table public.vin_reveals (
 create index idx_vin_reveals_user_time on public.vin_reveals (user_id, created_at desc);
 
 alter table public.vin_reveals enable row level security;
+revoke all on public.vin_reveals from anon, authenticated;
 -- No client access: written and read only by the function below.
 
 create or replace function public.reveal_car_vin(p_car_id uuid)

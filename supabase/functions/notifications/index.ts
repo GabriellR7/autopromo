@@ -1,7 +1,8 @@
 // =============================================================================
 // Edge Function: notifications
-// Sends e-mails for (1) unread chat messages and (2) visit reminders 24h / 1h
-// before a confirmed visit. Meant to be called every 10 minutes by pg_cron.
+// Sends e-mails for (1) unread chat messages, (2) visit reminders 24h / 1h
+// before a confirmed visit, (3) new cars matching a saved search (daily digest)
+// and (4) price drops on saved cars. Meant to be called every 10 minutes by pg_cron.
 //
 // Required secrets (Supabase → Edge Functions → Secrets):
 //   RESEND_API_KEY  — from https://resend.com (free tier is enough to start)
@@ -44,6 +45,55 @@ interface VisitReminder {
   buyer_name: string | null;
   owner_email: string;
   owner_name: string | null;
+}
+
+interface CarCardData {
+  public_id: number;
+  year: number;
+  make: string;
+  model: string;
+  trim_level: string | null;
+  price: number;
+  old_price?: number;
+  mileage?: number;
+  city: string | null;
+  state: string | null;
+  photo: string | null;
+}
+
+interface SearchAlert {
+  search_id: string;
+  search_name: string;
+  recipient_email: string;
+  recipient_name: string | null;
+  cars: CarCardData[];
+  total: number;
+}
+
+interface PriceDropAlert {
+  recipient_email: string;
+  recipient_name: string | null;
+  cars: CarCardData[];
+  car_ids: string[];
+}
+
+const usd = (n: number) => '$' + Math.round(Number(n)).toLocaleString('en-US');
+
+const slug = (c: CarCardData) =>
+  [c.year, c.make, c.model, c.city, c.state].filter(Boolean).join(' ').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + c.public_id;
+
+/** One car row for e-mails (table layout so it works in every mail client). */
+function carRow(c: CarCardData) {
+  const url = `${SITE_URL}/cars/${slug(c)}`;
+  const title = `${c.year} ${c.make} ${c.model}${c.trim_level ? ` ${c.trim_level}` : ''}`;
+  const priceHtml = c.old_price
+    ? `<span style="color:#16a34a;font-weight:700">${usd(c.price)}</span> <span style="color:#94a3b8;text-decoration:line-through">${usd(c.old_price)}</span>`
+    : `<span style="font-weight:700;color:#0f1d3a">${usd(c.price)}</span>`;
+  const meta = [c.mileage != null ? `${Number(c.mileage).toLocaleString('en-US')} mi` : null, [c.city, c.state].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
+  return `<table role="presentation" width="100%" style="border-collapse:collapse;margin:0 0 12px"><tr>
+    <td width="112" style="padding:0 12px 0 0;vertical-align:top"><a href="${url}">${c.photo ? `<img src="${escape(c.photo)}" width="112" height="84" style="display:block;border-radius:8px;object-fit:cover" alt="">` : `<div style="width:112px;height:84px;border-radius:8px;background:#e2e8f0"></div>`}</a></td>
+    <td style="vertical-align:top"><a href="${url}" style="color:#0f172a;font-weight:600;text-decoration:none">${escape(title)}</a><div style="margin-top:4px">${priceHtml}</div><div style="margin-top:2px;font-size:13px;color:#64748b">${escape(meta)}</div></td>
+  </tr></table>`;
 }
 
 const escape = (s: string | null | undefined) =>
@@ -91,7 +141,7 @@ Deno.serve(async (req) => {
     return Response.json({ skipped: true, reason: 'RESEND_API_KEY is not set' });
   }
 
-  const result = { messages: 0, reminders: 0, errors: [] as string[] };
+  const result = { messages: 0, reminders: 0, search_alerts: 0, price_drops: 0, errors: [] as string[] };
 
   // 1) Unread messages
   const { data: notices, error: nErr } = await db.rpc('pending_message_notifications');
@@ -152,6 +202,67 @@ Deno.serve(async (req) => {
       result.errors.push(String(e));
     }
   }
+
+  // 3) Saved-search digests (new matching cars, at most one e-mail per search per ~day)
+  const { data: searchAlerts, error: sErr } = await db.rpc('pending_search_alerts');
+  if (sErr) result.errors.push(sErr.message);
+  const notifiedSearches: string[] = [];
+  for (const a of (searchAlerts ?? []) as SearchAlert[]) {
+    const total = Number(a.total);
+    try {
+      await sendEmail(
+        a.recipient_email,
+        `${total} new ${total === 1 ? 'car matches' : 'cars match'} "${a.search_name}"`,
+        layout(
+          `${total} new ${total === 1 ? 'match' : 'matches'} for your search`,
+          `<p style="margin:0 0 4px">Hi ${escape(a.recipient_name?.split(' ')[0] ?? 'there')},</p>
+           <p style="margin:0 0 16px;color:#475569">New listings for <strong>${escape(a.search_name)}</strong>:</p>
+           ${a.cars.map(carRow).join('')}
+           ${total > a.cars.length ? `<p style="margin:0;color:#64748b;font-size:14px">+ ${total - a.cars.length} more</p>` : ''}
+           <p style="margin:16px 0 0;font-size:12px;color:#94a3b8">You can turn these alerts off in Saved → Saved searches.</p>`,
+          `${SITE_URL}/dashboard/saved`,
+          'See all matches',
+        ),
+      );
+      notifiedSearches.push(a.search_id);
+      result.search_alerts++;
+    } catch (e) {
+      result.errors.push(String(e));
+    }
+  }
+  if (notifiedSearches.length) await db.rpc('mark_search_notified', { p_ids: notifiedSearches });
+
+  // 4) Price drops on saved cars
+  const startedAt = new Date().toISOString();
+  const { data: drops, error: dErr } = await db.rpc('pending_price_drop_alerts');
+  if (dErr) result.errors.push(dErr.message);
+  const droppedCars = new Set<string>();
+  for (const d of (drops ?? []) as PriceDropAlert[]) {
+    const first = d.cars[0]!;
+    const subject = d.cars.length === 1
+      ? `Price drop: ${first.year} ${first.make} ${first.model} is now ${usd(first.price)}`
+      : `${d.cars.length} cars you saved just dropped in price`;
+    try {
+      await sendEmail(
+        d.recipient_email,
+        subject,
+        layout(
+          d.cars.length === 1 ? 'A car you saved dropped in price' : 'Cars you saved dropped in price',
+          `<p style="margin:0 0 16px">Hi ${escape(d.recipient_name?.split(' ')[0] ?? 'there')}, good news:</p>
+           ${d.cars.map(carRow).join('')}
+           <p style="margin:12px 0 0;font-size:12px;color:#94a3b8">You get this because you saved these cars. Remove them in Saved to stop alerts.</p>`,
+          `${SITE_URL}/dashboard/saved`,
+          'View saved cars',
+        ),
+      );
+      result.price_drops++;
+    } catch (e) {
+      result.errors.push(String(e));
+    }
+    d.car_ids.forEach((id) => droppedCars.add(id));
+  }
+  if (droppedCars.size) await db.rpc('mark_price_drops_notified', { p_car_ids: [...droppedCars], p_before: startedAt });
+  await db.rpc('close_stale_price_drops');
 
   return Response.json(result);
 });

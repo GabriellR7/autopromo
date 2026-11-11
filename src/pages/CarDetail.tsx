@@ -21,6 +21,8 @@ import { CarCard } from '@/components/cars/CarCard';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { RatingSummary, ReportButton } from '@/components/community/Community';
 import { PaymentEstimator, SafetyTips, VehicleHistory, estimatedMonthly } from '@/components/cars/BuyerTools';
+import { SaveButton } from '@/components/cars/SaveButton';
+import { recentPriceDrop } from '@/lib/saved';
 
 export default function CarDetail() {
   const { slug = '' } = useParams();
@@ -141,6 +143,7 @@ export default function CarDetail() {
   const isOwner = user?.id === car.owner_id;
   const current = photos[index];
   const fromPromoter = getReferralCode();
+  const wasPrice = recentPriceDrop(car);
   const referrerName = getReferrerName();
 
   async function share() {
@@ -272,7 +275,15 @@ export default function CarDetail() {
             <p className="text-xs text-muted-foreground">Listed {timeAgo(car.published_at ?? car.created_at)} · {car.views.toLocaleString('en-US')} views</p>
             <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{title}</h1>
             {car.trim_level && <p className="text-muted-foreground">{car.trim_level}</p>}
-            <p className="mt-3 text-3xl font-extrabold text-navy sm:text-4xl">{formatPrice(car.price)}</p>
+            <div className="mt-3 flex flex-wrap items-baseline gap-x-3">
+              <p className="text-3xl font-extrabold text-navy sm:text-4xl">{formatPrice(car.price)}</p>
+              {wasPrice && car.status !== 'sold' && (
+                <p className="text-sm">
+                  <span className="text-muted-foreground line-through">{formatPrice(wasPrice)}</span>{' '}
+                  <span className="font-semibold text-success">Price drop −{formatPrice(wasPrice - car.price)}</span>
+                </p>
+              )}
+            </div>
             {car.status !== 'sold' && (
               <a href="#payment" className="text-sm font-medium text-primary hover:underline">
                 est. {formatPrice(estimatedMonthly(car.price))}/mo
@@ -319,7 +330,8 @@ export default function CarDetail() {
                 </Button>
               </div>
             )}
-            <button onClick={share} className="mt-3 flex w-full items-center justify-center gap-2 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
+            {!isOwner && car.status !== 'sold' && <SaveButton carId={car.id} from={carPath(car)} variant="inline" className="mt-3" />}
+            <button onClick={share} className="mt-1 flex w-full items-center justify-center gap-2 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
               <Share2 className="size-4" /> Share this car
             </button>
             {!isOwner && <div className="mt-1 text-center"><ReportButton targetType="car" targetId={car.id} /></div>}

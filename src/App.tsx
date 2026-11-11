@@ -24,6 +24,7 @@ const Messages = lazy(() => import('@/pages/dashboard/Messages'));
 const Settings = lazy(() => import('@/pages/dashboard/Settings'));
 const OwnerCommissions = lazy(() => import('@/pages/dashboard/OwnerCommissions'));
 const Billing = lazy(() => import('@/pages/dashboard/Billing'));
+const Saved = lazy(() => import('@/pages/dashboard/Saved'));
 const PromoterEarnings = lazy(() => import('@/pages/dashboard/promoter/PromoterEarnings'));
 const AdminLayout = lazy(() => import('@/pages/admin/AdminLayout').then((m) => ({ default: m.AdminLayout })));
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard'));
@@ -77,6 +78,7 @@ const router = createBrowserRouter([
           { path: 'promoter/earnings', element: s(<PromoterEarnings />) },
           { path: 'commissions', element: s(<OwnerCommissions />) },
           { path: 'billing', element: s(<Billing />) },
+          { path: 'saved', element: s(<Saved />) },
         ],
       },
 
