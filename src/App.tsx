@@ -1,0 +1,74 @@
+import { lazy, Suspense, type ReactNode } from 'react';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { Layout } from '@/components/layout/Layout';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { GuestOnly, RequireAuth } from '@/components/auth/RequireAuth';
+import { PageLoader } from '@/components/ui/misc';
+import Home from '@/pages/Home';
+import Cars from '@/pages/Cars';
+import CarDetail from '@/pages/CarDetail';
+import ReferralRedirect from '@/pages/ReferralRedirect';
+import { Faq, HowItWorks, NotFound, Privacy, Terms } from '@/pages/StaticPages';
+import Login from '@/pages/auth/Login';
+import Signup from '@/pages/auth/Signup';
+import Onboarding from '@/pages/auth/Onboarding';
+import { AuthCallback, CheckEmail, ForgotPassword, ResetPassword } from '@/pages/auth/AuthMisc';
+
+// Dashboard pages are split into a separate bundle (visitors don't download them).
+const Overview = lazy(() => import('@/pages/dashboard/Overview'));
+const MyListings = lazy(() => import('@/pages/dashboard/MyListings'));
+const ListingWizard = lazy(() => import('@/pages/dashboard/ListingWizard'));
+const ComingSoon = lazy(() => import('@/pages/dashboard/ComingSoon'));
+const OwnerPromoters = lazy(() => import('@/pages/dashboard/OwnerPromoters'));
+const PromoterDashboard = lazy(() => import('@/pages/dashboard/promoter/PromoterDashboard'));
+const PromoterExplore = lazy(() => import('@/pages/dashboard/promoter/PromoterExplore'));
+
+const s = (el: ReactNode) => <Suspense fallback={<PageLoader />}>{el}</Suspense>;
+
+const router = createBrowserRouter([
+  {
+    element: <Layout />,
+    children: [
+      { path: '/', element: <Home /> },
+      { path: '/cars', element: <Cars /> },
+      { path: '/cars/:slug', element: <CarDetail /> },
+      { path: '/r/:code', element: <ReferralRedirect /> },
+      { path: '/how-it-works', element: <HowItWorks /> },
+      { path: '/faq', element: <Faq /> },
+      { path: '/terms', element: <Terms /> },
+      { path: '/privacy', element: <Privacy /> },
+
+      { path: '/login', element: <GuestOnly><Login /></GuestOnly> },
+      { path: '/signup', element: <GuestOnly><Signup /></GuestOnly> },
+      { path: '/check-email', element: <CheckEmail /> },
+      { path: '/forgot-password', element: <ForgotPassword /> },
+      { path: '/reset-password', element: <ResetPassword /> },
+      { path: '/auth/callback', element: <AuthCallback /> },
+      { path: '/onboarding', element: <RequireAuth skipOnboarding><Onboarding /></RequireAuth> },
+
+      {
+        path: '/dashboard',
+        element: <RequireAuth><DashboardLayout /></RequireAuth>,
+        children: [
+          { index: true, element: s(<Overview />) },
+          { path: 'listings', element: s(<MyListings />) },
+          { path: 'listings/new', element: s(<ListingWizard key="new" />) },
+          { path: 'listings/:id/edit', element: s(<ListingWizard key="edit" />) },
+          {
+            path: 'messages',
+            element: s(<ComingSoon title="Messages" description="Real-time chat with buyers and promoters, with contact details protected until a visit is scheduled." />),
+          },
+          { path: 'promoters', element: s(<OwnerPromoters />) },
+          { path: 'promoter', element: s(<PromoterDashboard />) },
+          { path: 'promoter/explore', element: s(<PromoterExplore />) },
+        ],
+      },
+
+      { path: '*', element: <NotFound /> },
+    ],
+  },
+]);
+
+export default function App() {
+  return <RouterProvider router={router} />;
+}
