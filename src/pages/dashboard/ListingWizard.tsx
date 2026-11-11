@@ -17,6 +17,8 @@ import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { Alert, Card, Checkbox, PageLoader } from '@/components/ui/misc';
 import { PhotoManager } from '@/components/cars/PhotoManager';
 import { PlanBanner } from '@/components/billing/PlanBanner';
+import { ListingScoreCard, PriceSuggestion } from '@/components/cars/OwnerInsights';
+import { listingScore } from '@/lib/insights';
 
 const STEPS = ['Vehicle', 'Photos', 'Price & fee', 'Location & details', 'Review'];
 const currentYear = new Date().getFullYear();
@@ -445,6 +447,15 @@ export default function ListingWizard() {
                   onChange={(e) => set('price', e.target.value.replace(/\D/g, '').slice(0, 7))} />
               </div>
             </Field>
+            <PriceSuggestion
+              make={make}
+              model={form.model.trim()}
+              year={Number(form.year) || 0}
+              mileage={form.mileage === '' ? null : Number(form.mileage)}
+              price={price}
+              excludeId={car?.id}
+              onUse={(p) => set('price', String(p))}
+            />
 
             <div className="space-y-3">
               <div>
@@ -548,6 +559,18 @@ export default function ListingWizard() {
               <Item label="Auto-approve promoters" value={form.allow_any_verified_promoter ? 'Yes' : 'No'} />
             </dl>
             {photos.length === 0 && <Alert>Tip: listings without photos rarely sell. Go back to step 2 to add some.</Alert>}
+            <ListingScoreCard
+              {...listingScore({
+                description: form.description,
+                trim_level: form.trim_level,
+                exterior_color: form.exterior_color,
+                commission_type: form.commission_type,
+                commission_value: Number(form.commission_value) || 0,
+                price,
+                photoCount: photos.length,
+                hasVin: Boolean(form.vin.trim()),
+              })}
+            />
             <p className="rounded-lg bg-secondary/60 p-3 text-xs leading-relaxed text-muted-foreground">
               By publishing, you confirm you are the legal owner of this vehicle (or authorized to sell it) and that the
               information is accurate. {LEGAL_DISCLAIMER}

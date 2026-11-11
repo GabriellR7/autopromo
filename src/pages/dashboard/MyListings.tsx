@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Car, ExternalLink, Eye, Pencil, Plus, Trash2 } from 'lucide-react';
+import { BarChart3, Car, ExternalLink, Eye, Heart, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { deleteListing, fetchMyListings, friendlyDbError, setListingStatus } from '@/lib/listings';
 import { coverUrl } from '@/lib/cars';
@@ -15,6 +15,8 @@ import { Badge, Card, EmptyState, Skeleton } from '@/components/ui/misc';
 import { CarImage } from '@/components/cars/CarImage';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { PlanBanner } from '@/components/billing/PlanBanner';
+import { CarStatsDialog, ScoreRing } from '@/components/cars/OwnerInsights';
+import { fetchMySaveCounts, listingScore } from '@/lib/insights';
 
 const STATUS_VARIANT: Record<CarStatus, 'secondary' | 'success' | 'warning' | 'dark' | 'outline'> = {
   draft: 'secondary',
@@ -30,6 +32,7 @@ export default function MyListings() {
   const { user } = useAuth();
   const [cars, setCars] = useState<CarWithPhotos[] | null>(null);
   const [filter, setFilter] = useState<CarStatus | 'all'>('all');
+  const [saves, setSaves] = useState<Record<string, number>>({});
 
   async function load() {
     if (!user) return;
@@ -43,6 +46,7 @@ export default function MyListings() {
 
   useEffect(() => {
     load();
+    fetchMySaveCounts().then(setSaves).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -90,7 +94,7 @@ export default function MyListings() {
         />
       ) : (
         <Card className="divide-y">
-          {visible.map((car) => <ListingRow key={car.id} car={car} onChanged={load} />)}
+          {visible.map((car) => <ListingRow key={car.id} car={car} saves={saves[car.id] ?? 0} onChanged={load} />)}
           {visible.length === 0 && <p className="p-8 text-center text-sm text-muted-foreground">No listings with this status.</p>}
         </Card>
       )}
@@ -98,10 +102,13 @@ export default function MyListings() {
   );
 }
 
-export function ListingRow({ car, compact = false, onChanged }: { car: CarWithPhotos; compact?: boolean; onChanged?: () => void }) {
+export function ListingRow({ car, compact = false, saves, onChanged }: { car: CarWithPhotos; compact?: boolean; saves?: number; onChanged?: () => void }) {
   const [busy, setBusy] = useState(false);
   const [soldOpen, setSoldOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
   const title = carTitle(car);
+  const { score, tips } = listingScore({ ...car, photoCount: car.car_photos.length, hasVin: Boolean(car.vin_last6) });
+  const nextTip = tips.find((t) => !t.done);
 
   async function changeStatus(status: CarStatus) {
     setBusy(true);
@@ -137,7 +144,14 @@ export function ListingRow({ car, compact = false, onChanged }: { car: CarWithPh
   return (
     <div className={cn('p-4', busy && 'pointer-events-none opacity-60')}>
       <div className="flex flex-wrap items-center gap-4">
-        <CarImage src={coverUrl(car)} alt={title} className="h-16 w-24 shrink-0 rounded-lg" />
+        <div className="relative shrink-0">
+          <CarImage src={coverUrl(car)} alt={title} className="h-16 w-24 rounded-lg" />
+          {car.status !== 'sold' && (
+            <div className="absolute -bottom-2 -right-2 rounded-full bg-card">
+              <ScoreRing score={score} size="sm" />
+            </div>
+          )}
+        </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="truncate font-semibold">{title}</p>
@@ -150,9 +164,16 @@ export function ListingRow({ car, compact = false, onChanged }: { car: CarWithPh
           {car.moderation_note && (
             <p className="mt-1 rounded bg-amber-50 px-2 py-1 text-xs text-amber-900">AutoPromo: {car.moderation_note}</p>
           )}
-          <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-            <Eye className="size-3.5" /> {car.views.toLocaleString('en-US')} views · {car.car_photos.length} photos
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
+            <Eye className="size-3.5" /> {car.views.toLocaleString('en-US')} views
+            {saves !== undefined && <><span>·</span><Heart className="size-3.5" /> {saves} saved</>}
+            <span>· {car.car_photos.length} photos</span>
           </p>
+          {!compact && car.status !== 'sold' && nextTip && (
+            <Link to={`/dashboard/listings/${car.id}/edit`} className="mt-1 block text-xs font-medium text-primary hover:underline">
+              Tip: {nextTip.label}
+            </Link>
+          )}
         </div>
         {!compact && (
           <div className="flex w-full items-center gap-2 sm:w-auto">
@@ -179,6 +200,11 @@ export function ListingRow({ car, compact = false, onChanged }: { car: CarWithPh
                 <option value="sold">Mark as sold…</option>
               </Select>
             )}
+            {car.published_at && (
+              <Button size="icon" variant="ghost" onClick={() => setStatsOpen(true)} aria-label="Listing stats">
+                <BarChart3 />
+              </Button>
+            )}
             <Button asChild size="icon" variant="ghost" aria-label="Edit listing">
               <Link to={`/dashboard/listings/${car.id}/edit`}><Pencil /></Link>
             </Button>
@@ -198,6 +224,7 @@ export function ListingRow({ car, compact = false, onChanged }: { car: CarWithPh
       </div>
 
       <SaleDialog car={car} open={soldOpen} onClose={() => setSoldOpen(false)} onDone={() => onChanged?.()} />
+      {statsOpen && <CarStatsDialog carId={car.id} title={title} open={statsOpen} onClose={() => setStatsOpen(false)} />}
     </div>
   );
 }
