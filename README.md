@@ -1,4 +1,4 @@
-# AutoPromo — Fases 1, 2 e 3
+# AutoPromo — Fases 1 a 4
 
 Marketplace de carros usados para os EUA, onde **donos** anunciam e **promotores** indicam compradores em troca de comissão.
 O site está todo em inglês americano (USD, milhas, MM/DD/YYYY).
@@ -22,12 +22,16 @@ O site está todo em inglês americano (USD, milhas, MM/DD/YYYY).
 | Visitas (Fase 3) | O comprador propõe data e hora, e o dono confirma ou recusa. Ao confirmar, **os contatos são liberados** (telefone em Settings e e-mail). Dá para cancelar e marcar como concluída |
 | Atribuição (Fase 3) | Conversas abertas com o cookie `?ref=` ficam ligadas ao promotor, e o painel dele mostra cliques, chats e visitas por carro |
 | E-mails (Fase 3) | Edge Function `notifications` (já publicada) envia aviso de mensagem não lida (após 10 min) e lembretes 24h e 1h antes da visita. **Ativação abaixo** |
+| Venda (Fase 4) | "Mark as sold" pede o preço final, **quem comprou** (entre as conversas) e **qual promotor indicou**. Se o comprador veio pelo link de um promotor, ele é creditado automaticamente. Um carro só vira "vendido" por esse fluxo (regra no banco) e não pode ser reaberto |
+| Comissões (Fase 4) | A comissão é calculada pelo banco (fixa ou % do preço final), menos a taxa da plataforma (`platform_fee_percent`). O dono paga com cartão pelo **Stripe Checkout**, o valor vai direto para a conta Stripe do promotor e a taxa fica com o AutoPromo (*destination charge*) |
+| Recebimento (Fase 4) | Em **Earnings**, o promotor cadastra o recebimento pelo **Stripe Connect Express** (identidade + banco americano) e vê o que tem a receber e o que já recebeu. O nível sobe com as vendas: Silver com 3, Gold com 10 |
+| Disputas (Fase 4) | Se o dono marcar como vendido sem creditar um promotor que trouxe compradores pelo chat, **abre uma revisão automática**. O promotor também pode pedir revisão em até 30 dias. A decisão fica no painel admin (Fase 5) |
 | Banco | Tabelas, RLS, regras no banco (limite de anúncios, estados liberados, máx. 20 fotos), busca geográfica, contador de visualizações, bucket de fotos |
 
 
 ## 1. Configurar o Supabase
 
-> **Já está pronto:** o projeto **autopromo** foi criado na sua conta do Supabase (organização "adega capital", região East US), com as 5 migrações e os dados de teste (Fases 1 a 3) aplicados. O arquivo `.env` já vem com a URL e a chave pública. Faltam só os passos 4 a 7 abaixo, que são feitos no painel.
+> **Já está pronto:** o projeto **autopromo** foi criado na sua conta do Supabase (organização "adega capital", região East US), com as 6 migrações, os dados de teste e as Edge Functions (`notifications`, `stripe-api`, `stripe-webhook`) já publicados. O arquivo `.env` já vem com a URL e a chave pública. Faltam só os passos 4 a 7 abaixo, que são feitos no painel.
 >
 > URL: `https://scvdvwryiuthnzwsyade.supabase.co`
 
@@ -73,7 +77,24 @@ Para publicar: `npm run build` gera a pasta `dist/`. O arquivo `public/_redirect
    - `CRON_SECRET` = uma senha longa qualquer, inventada por você
 3. Abra `supabase/cron_notifications.sql`, troque `PUT-THE-SAME-CRON-SECRET-HERE` pelo mesmo `CRON_SECRET` e rode no SQL Editor. A função passa a rodar a cada 10 minutos.
 
-## 4. Configurações da plataforma
+## 4. Ativar pagamentos (Stripe Connect)
+
+> ⚠️ O Stripe Connect para os EUA exige que **a plataforma** seja uma empresa americana (ex.: LLC aberta pelo Stripe Atlas ou Firstbase) com conta bancária nos EUA. Dá pra testar tudo antes disso em **modo de teste**.
+
+1. Crie a conta em [stripe.com](https://stripe.com) e ative o **Connect** (Dashboard → Connect → Get started → tipo *Platform/Marketplace*, contas **Express**).
+2. Em **Developers → API keys**, copie a **Secret key** (`sk_test_...` no modo de teste).
+3. Em **Developers → Webhooks → Add endpoint**:
+   - URL: `https://scvdvwryiuthnzwsyade.supabase.co/functions/v1/stripe-webhook`
+   - Evento **da sua conta**: `checkout.session.completed` → copie o *Signing secret* (`whsec_...`)
+   - Crie **um segundo endpoint** com a mesma URL, marcando "Listen to events on **Connected accounts**", evento `account.updated` → copie o segundo *Signing secret*
+4. No Supabase, em **Edge Functions → Secrets**:
+   - `STRIPE_SECRET_KEY` = `sk_test_...`
+   - `STRIPE_WEBHOOK_SECRET` = o whsec do 1º endpoint
+   - `STRIPE_CONNECT_WEBHOOK_SECRET` = o whsec do 2º endpoint
+   - `SITE_URL` = endereço do site (o mesmo dos e-mails)
+5. Para testar: entre como promotor → Earnings → **Set up payouts** (no modo de teste o Stripe aceita dados fictícios, como SSN `000-00-0000` e banco de teste). Depois entre como dono → Commissions → **Pay now** com o cartão `4242 4242 4242 4242`.
+
+## 5. Configurações da plataforma
 
 A tabela `platform_settings` (uma linha só) controla:
 
@@ -86,18 +107,19 @@ A tabela `platform_settings` (uma linha só) controla:
 
 Na Fase 5 isso vira uma tela no painel admin.
 
-## 5. Segurança
+## 6. Segurança
 
 - **RLS em todas as tabelas.** Ninguém edita anúncio, foto ou perfil de outra pessoa.
 - **Proteção por coluna.** Pelo navegador, um usuário não consegue se tornar admin, se marcar como verificado, mexer nas visualizações etc.
 - **VIN completo** fica na tabela `car_private`, que só o dono vê. O público vê só os 6 últimos caracteres.
 - **Fotos** ficam em `car-photos/<user_id>/<car_id>/`, e cada usuário só grava na própria pasta.
 - **Chat:** só os 2 participantes leem as mensagens. O promotor vê só que a conversa existe (para as estatísticas), nunca o conteúdo. Telefone fica em `profile_contacts`, visível só pelo dono do número, e só é revelado ao outro por `get_contact_details` depois da visita confirmada.
+- **Dinheiro:** vendas, comissões e disputas só são criadas por funções do banco. O navegador não consegue marcar uma comissão como paga, porque quem faz isso é o webhook do Stripe, que tem a assinatura verificada. A chave secreta do Stripe só existe nas Edge Functions.
 - **As regras de negócio** (estado liberado, limite de anúncios, preço e local obrigatórios para publicar) rodam no banco e não podem ser burladas pelo front.
 
 Essas regras foram testadas num Postgres local que imita o Supabase.
 
-## 6. Estrutura
+## 7. Estrutura
 
 ```
 src/
@@ -109,11 +131,11 @@ src/
     ui/          button, input/select/textarea/field, misc (card, badge, alert, avatar…)
   context/       AuthContext (sessão, perfil, modo ativo)
   hooks/         useDocumentTitle, usePlatformSettings
-  lib/           supabase, cars (busca), listings (CRUD + fotos), promotions (promotores), chat (mensagens e visitas), zip, referral (cliques), image, utils, constants, types
+  lib/           supabase, cars (busca), listings (CRUD + fotos), promotions (promotores), chat (mensagens e visitas), sales (vendas, comissões, Stripe), zip, referral (cliques), image, utils, constants, types
   pages/         Home, Cars, CarDetail, ReferralRedirect (/r/CODE), StaticPages, auth/*, dashboard/* (incl. promoter/*)
 supabase/
   migrations/    SQL das fases (rodar em ordem)
-  functions/     notifications (e-mails)
+  functions/     notifications (e-mails), stripe-api (Connect + Checkout), stripe-webhook
   seed*.sql      dados de teste
   cron_notifications.sql  agendamento dos e-mails
 ```
@@ -122,7 +144,6 @@ O ZIP é convertido em cidade, estado e coordenadas pela API gratuita [Zippopota
 
 ## Próximas fases
 
-4. Confirmação de venda, comissões, Stripe Connect e disputas
 5. Avaliações, denúncias e painel admin
 6. Polimento, SEO e performance
 

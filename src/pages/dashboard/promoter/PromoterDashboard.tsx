@@ -93,13 +93,16 @@ export default function PromoterDashboard() {
           </div>
           <p className="text-muted-foreground">Share your links, track your clicks and grow your earnings.</p>
         </div>
-        <Button asChild><Link to="/dashboard/promoter/explore"><Search /> Find cars to promote</Link></Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline"><Link to="/dashboard/promoter/earnings">Earnings</Link></Button>
+          <Button asChild><Link to="/dashboard/promoter/explore"><Search /> Find cars to promote</Link></Button>
+        </div>
       </div>
 
       {!profile.identity_verified && (
         <Alert title="Get the Verified Promoter badge">
-          Verified promoters are auto-approved on many listings. Identity verification (ID + selfie) and bank payouts
-          will be available soon — until then, owners approve your requests manually.
+          Verified promoters are auto-approved on many listings. Set up payouts in <Link to="/dashboard/promoter/earnings" className="font-semibold underline">Earnings</Link> (Stripe
+          verifies your identity) — the AutoPromo team then grants the Verified badge.
         </Alert>
       )}
       {error && <Alert variant="error">{error}</Alert>}

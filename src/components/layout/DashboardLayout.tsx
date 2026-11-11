@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { BadgeDollarSign, Car, LayoutDashboard, MessageSquare, Plus, Search, Settings, Users, type LucideIcon } from 'lucide-react';
+import { BadgeDollarSign, Car, LayoutDashboard, MessageSquare, Plus, Receipt, Search, Settings, Users, Wallet, type LucideIcon } from 'lucide-react';
 import { useUnreadCount } from '@/hooks/useUnreadCount';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
@@ -11,11 +11,13 @@ const SELLER: Item[] = [
   { to: '/dashboard/listings', label: 'My listings', icon: Car, end: true },
   { to: '/dashboard/listings/new', label: 'New listing', icon: Plus },
   { to: '/dashboard/promoters', label: 'Promoters', icon: Users },
+  { to: '/dashboard/commissions', label: 'Commissions', icon: Receipt },
 ];
 
 const PROMOTER: Item[] = [
   { to: '/dashboard/promoter', label: 'Promoter dashboard', icon: BadgeDollarSign, end: true },
   { to: '/dashboard/promoter/explore', label: 'Find cars', icon: Search },
+  { to: '/dashboard/promoter/earnings', label: 'Earnings', icon: Wallet },
 ];
 
 

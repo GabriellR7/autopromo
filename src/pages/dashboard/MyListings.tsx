@@ -9,7 +9,8 @@ import { STATUS_LABELS } from '@/lib/constants';
 import type { CarStatus, CarWithPhotos } from '@/lib/types';
 import { carPath, carTitle, cn, formatMiles, formatPrice } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Input, Select } from '@/components/ui/input';
+import { Select } from '@/components/ui/input';
+import { SaleDialog } from '@/components/cars/SaleDialog';
 import { Badge, Card, EmptyState, Skeleton } from '@/components/ui/misc';
 import { CarImage } from '@/components/cars/CarImage';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
@@ -97,13 +98,12 @@ export default function MyListings() {
 export function ListingRow({ car, compact = false, onChanged }: { car: CarWithPhotos; compact?: boolean; onChanged?: () => void }) {
   const [busy, setBusy] = useState(false);
   const [soldOpen, setSoldOpen] = useState(false);
-  const [soldPrice, setSoldPrice] = useState(car.price ? String(car.price) : '');
   const title = carTitle(car);
 
-  async function changeStatus(status: CarStatus, price?: number) {
+  async function changeStatus(status: CarStatus) {
     setBusy(true);
     try {
-      await setListingStatus(car.id, status, price);
+      await setListingStatus(car.id, status);
       toast.success(status === 'active' ? 'Listing is live!' : `Status changed to ${STATUS_LABELS[status]}`);
       setSoldOpen(false);
       onChanged?.();
@@ -146,7 +146,9 @@ export function ListingRow({ car, compact = false, onChanged }: { car: CarWithPh
         </div>
         {!compact && (
           <div className="flex w-full items-center gap-2 sm:w-auto">
-            {car.status === 'draft' ? (
+            {car.status === 'sold' ? (
+              <span className="flex-1 text-sm text-muted-foreground sm:flex-none">Sold{car.sold_price ? ` for ${formatPrice(car.sold_price)}` : ''}</span>
+            ) : car.status === 'draft' ? (
               <Button size="sm" onClick={() => changeStatus('active')} className="flex-1 sm:flex-none">Publish</Button>
             ) : (
               <Select
@@ -162,7 +164,7 @@ export function ListingRow({ car, compact = false, onChanged }: { car: CarWithPh
                 <option value="active">Active</option>
                 <option value="pending_sale">Pending sale</option>
                 <option value="paused">Paused</option>
-                <option value="sold">Sold</option>
+                <option value="sold">Mark as sold…</option>
               </Select>
             )}
             <Button asChild size="icon" variant="ghost" aria-label="Edit listing">
@@ -183,23 +185,7 @@ export function ListingRow({ car, compact = false, onChanged }: { car: CarWithPh
         )}
       </div>
 
-      {soldOpen && (
-        <div className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border bg-secondary/50 p-4">
-          <div className="min-w-[200px] flex-1">
-            <label htmlFor={`sold-${car.id}`} className="text-sm font-medium">Final sale price</label>
-            <Input
-              id={`sold-${car.id}`}
-              inputMode="numeric"
-              value={soldPrice}
-              onChange={(e) => setSoldPrice(e.target.value.replace(/\D/g, ''))}
-              className="mt-1.5"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">Promoter attribution and referral payment arrive in a later update.</p>
-          </div>
-          <Button onClick={() => changeStatus('sold', Number(soldPrice) || undefined)} disabled={!Number(soldPrice)}>Mark as sold</Button>
-          <Button variant="ghost" onClick={() => setSoldOpen(false)}>Cancel</Button>
-        </div>
-      )}
+      <SaleDialog car={car} open={soldOpen} onClose={() => setSoldOpen(false)} onDone={() => onChanged?.()} />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { ArrowRight, BadgeDollarSign, Car, Eye, FileEdit, Plus, Rocket, Users } 
 import { useAuth } from '@/context/AuthContext';
 import { fetchMyListings } from '@/lib/listings';
 import { fetchIncomingRequests } from '@/lib/promotions';
+import { cents, fetchOwnerCommissions } from '@/lib/sales';
 import type { CarWithPhotos } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, Skeleton } from '@/components/ui/misc';
@@ -15,12 +16,16 @@ export default function Overview() {
   const { profile, user } = useAuth();
   const [cars, setCars] = useState<CarWithPhotos[] | null>(null);
   const [pendingRequests, setPendingRequests] = useState(0);
+  const [owed, setOwed] = useState(0);
 
   useEffect(() => {
     if (!user) return;
     fetchMyListings(user.id).then(setCars).catch(() => setCars([]));
     fetchIncomingRequests()
       .then((r) => setPendingRequests(r.filter((x) => x.status === 'pending' && x.car?.owner_id === user.id).length))
+      .catch(() => undefined);
+    fetchOwnerCommissions()
+      .then((d) => setOwed(d.commissions.filter((c) => c.status === 'pending').reduce((sum, c) => sum + c.amount_cents, 0)))
       .catch(() => undefined);
   }, [user]);
 
@@ -40,6 +45,16 @@ export default function Overview() {
           <Link to="/dashboard/listings/new"><Plus /> List a car</Link>
         </Button>
       </div>
+
+      {owed > 0 && (
+        <Card className="flex flex-col gap-4 border-amber-300 bg-amber-50 p-5 sm:flex-row sm:items-center">
+          <div className="flex-1">
+            <h2 className="font-semibold">You have {cents(owed)} in referral fees to pay</h2>
+            <p className="text-sm text-muted-foreground">A promoter brought you a buyer. Pay securely by card.</p>
+          </div>
+          <Button asChild><Link to="/dashboard/commissions">View commissions</Link></Button>
+        </Card>
+      )}
 
       {pendingRequests > 0 && (
         <Card className="flex flex-col gap-4 border-primary/30 bg-accent p-5 sm:flex-row sm:items-center">
