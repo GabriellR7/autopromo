@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
-  BadgeCheck, BadgeDollarSign, Clock, ExternalLink, MousePointerClick, Search, StopCircle, TrendingUp, Users,
+  BadgeCheck, BadgeDollarSign, CalendarDays, Clock, ExternalLink, MessageSquare, MousePointerClick, Search, StopCircle, TrendingUp, Users,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { endPromotion, fetchMyPromotions, fetchMyRequests, type MyPromotion, type MyRequest } from '@/lib/promotions';
+import { endPromotion, fetchMyPromotions, fetchMyRequests, fetchPromotionFunnel, type MyPromotion, type MyRequest } from '@/lib/promotions';
+import { startConversation } from '@/lib/chat';
 import { carPath, commissionAmount, formatDate, formatPrice } from '@/lib/utils';
 import { STATUS_LABELS } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
@@ -27,13 +28,16 @@ export default function PromoterDashboard() {
   const [promos, setPromos] = useState<MyPromotion[] | null>(null);
   const [requests, setRequests] = useState<MyRequest[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [funnel, setFunnel] = useState<Map<string, { conversations: number; visits: number }>>(new Map());
+  const navigate = useNavigate();
 
   async function load() {
     if (!user) return;
     try {
-      const [p, r] = await Promise.all([fetchMyPromotions(), fetchMyRequests(user.id)]);
+      const [p, r, f] = await Promise.all([fetchMyPromotions(), fetchMyRequests(user.id), fetchPromotionFunnel()]);
       setPromos(p);
       setRequests(r);
+      setFunnel(f);
     } catch (e) {
       setError((e as Error).message);
       setPromos([]);
@@ -56,6 +60,15 @@ export default function PromoterDashboard() {
   const potential = active
     .filter((p) => p.car_status === 'active')
     .reduce((sum, p) => sum + commissionAmount({ commission_type: p.commission_type, commission_value: p.commission_value, price: p.price }), 0);
+
+  async function messageOwner(p: MyPromotion) {
+    try {
+      const id = await startConversation(p.car_id);
+      navigate(`/dashboard/messages/${id}`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
 
   async function stop(p: MyPromotion) {
     if (!window.confirm(`Stop promoting the ${p.year} ${p.make} ${p.model}? Your link will stop working.`)) return;
@@ -135,13 +148,18 @@ export default function PromoterDashboard() {
                   <div className="flex flex-wrap gap-4 text-sm">
                     <span className="flex items-center gap-1.5"><MousePointerClick className="size-4 text-primary" /><strong>{p.clicks}</strong> clicks</span>
                     <span className="flex items-center gap-1.5"><Users className="size-4 text-primary" /><strong>{p.unique_visitors}</strong> visitors</span>
-                    <span className="text-muted-foreground">{p.clicks_7d} this week</span>
+                    <span className="flex items-center gap-1.5"><MessageSquare className="size-4 text-primary" /><strong>{funnel.get(p.promotion_id)?.conversations ?? 0}</strong> chats</span>
+                    <span className="flex items-center gap-1.5"><CalendarDays className="size-4 text-primary" /><strong>{funnel.get(p.promotion_id)?.visits ?? 0}</strong> visits</span>
+                    <span className="text-muted-foreground">{p.clicks_7d} clicks this week</span>
                   </div>
                   <ShareButtons promo={p} />
                   <div className="flex gap-3 text-xs">
                     <Link to={carPath(p)} target="_blank" className="flex items-center gap-1 text-muted-foreground hover:text-foreground">
                       <ExternalLink className="size-3.5" /> View listing
                     </Link>
+                    <button onClick={() => messageOwner(p)} className="flex items-center gap-1 text-muted-foreground hover:text-foreground">
+                      <MessageSquare className="size-3.5" /> Message owner
+                    </button>
                     <button onClick={() => stop(p)} className="flex items-center gap-1 text-muted-foreground hover:text-destructive">
                       <StopCircle className="size-3.5" /> Stop promoting
                     </button>

@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { getReferralCode, getReferrerName } from '@/lib/referral';
 import { requestPromotion } from '@/lib/promotions';
+import { startConversation } from '@/lib/chat';
 import { BODY_TYPES, FUEL_TYPES, TRANSMISSIONS, labelFor } from '@/lib/constants';
 import type { CarDetail as CarDetailType, CarWithPhotos } from '@/lib/types';
 import { carPath, carSlug, carTitle, cn, commissionAmount, formatDate, formatMiles, formatPrice, publicIdFromSlug, timeAgo } from '@/lib/utils';
@@ -25,6 +26,7 @@ export default function CarDetail() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [promoting, setPromoting] = useState(false);
+  const [contacting, setContacting] = useState<'message' | 'visit' | null>(null);
   const [car, setCar] = useState<CarDetailType | null | undefined>(undefined);
   const [similar, setSimilar] = useState<CarWithPhotos[]>([]);
   const [index, setIndex] = useState(0);
@@ -137,13 +139,21 @@ export default function CarDetail() {
     }
   }
 
-  function requireLogin(action: string) {
+  async function contact(scheduleVisit = false) {
     if (!user) {
       navigate('/login', { state: { from: carPath(car!) } });
       return;
     }
-    toast.info(`${action} is coming in the next update (Phase 3: chat & visits).`);
+    setContacting(scheduleVisit ? 'visit' : 'message');
+    try {
+      const conversationId = await startConversation(car!.id, null, getReferralCode());
+      navigate(`/dashboard/messages/${conversationId}${scheduleVisit ? '?visit=1' : ''}`);
+    } catch (e) {
+      toast.error((e as Error).message);
+      setContacting(null);
+    }
   }
+
 
   const specs = [
     { icon: Calendar, label: 'Year', value: car.year },
@@ -253,10 +263,10 @@ export default function CarDetail() {
               <p className="mt-5 rounded-lg bg-secondary p-3 text-center text-sm font-medium">This car has been sold.</p>
             ) : (
               <div className="mt-5 grid gap-2">
-                <Button size="lg" onClick={() => requireLogin('Messaging')}>
+                <Button size="lg" onClick={() => contact(false)} loading={contacting === 'message'} disabled={Boolean(contacting)}>
                   <MessageSquare /> Contact
                 </Button>
-                <Button size="lg" variant="outline" onClick={() => requireLogin('Scheduling a visit')}>
+                <Button size="lg" variant="outline" onClick={() => contact(true)} loading={contacting === 'visit'} disabled={Boolean(contacting)}>
                   <CalendarDays /> Schedule a visit
                 </Button>
               </div>

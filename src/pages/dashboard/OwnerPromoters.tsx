@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { BadgeCheck, Check, Inbox, MousePointerClick, UserMinus, Users, X } from 'lucide-react';
+import { BadgeCheck, Check, Inbox, MessageSquare, MousePointerClick, UserMinus, Users, X } from 'lucide-react';
+import { startConversation } from '@/lib/chat';
 import { useAuth } from '@/context/AuthContext';
 import {
   decideRequest, endPromotion, fetchIncomingRequests, fetchOwnerPromoters, type IncomingRequest, type OwnerPromoter,
@@ -14,6 +15,7 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 export default function OwnerPromoters() {
   useDocumentTitle('Promoters');
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [requests, setRequests] = useState<IncomingRequest[] | null>(null);
   const [promoters, setPromoters] = useState<OwnerPromoter[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
@@ -54,6 +56,15 @@ export default function OwnerPromoters() {
       toast.error((e as Error).message);
     } finally {
       setBusy(null);
+    }
+  }
+
+  async function message(p: OwnerPromoter) {
+    try {
+      const id = await startConversation(p.car_id, p.promoter_id);
+      navigate(`/dashboard/messages/${id}`);
+    } catch (e) {
+      toast.error((e as Error).message);
     }
   }
 
@@ -147,6 +158,7 @@ export default function OwnerPromoters() {
                     <span className="flex items-center gap-1"><MousePointerClick className="size-4 text-primary" /><strong>{p.clicks}</strong> clicks</span>
                     <span className="flex items-center gap-1"><Users className="size-4 text-primary" /><strong>{p.unique_visitors}</strong> visitors</span>
                   </div>
+                  <Button size="sm" variant="outline" onClick={() => message(p)}><MessageSquare /> Message</Button>
                   <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10" onClick={() => remove(p)} disabled={busy === p.promotion_id}>
                     <UserMinus /> Remove
                   </Button>

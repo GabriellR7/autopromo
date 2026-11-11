@@ -80,6 +80,15 @@ export interface MyRequest extends PromotionRequest {
   car: { public_id: number; year: number; make: string; model: string; city: string | null; state: string | null } | null;
 }
 
+export async function fetchPromotionFunnel(): Promise<Map<string, { conversations: number; visits: number }>> {
+  const { data } = await supabase.rpc('promotion_funnel');
+  const map = new Map<string, { conversations: number; visits: number }>();
+  for (const row of (data ?? []) as { promotion_id: string; conversations: number; visits: number }[]) {
+    map.set(row.promotion_id, { conversations: Number(row.conversations), visits: Number(row.visits) });
+  }
+  return map;
+}
+
 export async function fetchMyRequests(promoterId: string): Promise<MyRequest[]> {
   const { data, error } = await supabase
     .from('promotion_requests')

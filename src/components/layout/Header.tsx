@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { BadgeDollarSign, Car, ChevronDown, LayoutDashboard, LogOut, Menu, Plus, Search, Shield, X } from 'lucide-react';
+import { BadgeDollarSign, Car, ChevronDown, LayoutDashboard, LogOut, Menu, MessageSquare, Plus, Search, Settings, Shield, X } from 'lucide-react';
+import { useUnreadCount } from '@/hooks/useUnreadCount';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/misc';
@@ -18,6 +19,7 @@ const MODE_LABEL: Record<ActiveMode, string> = { owner: 'Selling', promoter: 'Pr
 
 export function Header() {
   const { user, profile, signOut, setMode } = useAuth();
+  const unread = useUnreadCount(user?.id);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -77,6 +79,16 @@ export function Header() {
               <Plus /> Sell your car
             </Link>
           </Button>
+          {user && (
+            <Link to="/dashboard/messages" className="relative flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label="Messages">
+              <MessageSquare className="size-5" />
+              {unread > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white">
+                  {unread > 9 ? '9+' : unread}
+                </span>
+              )}
+            </Link>
+          )}
           {user ? (
             <div className="relative" ref={menuRef}>
               <button
@@ -98,6 +110,8 @@ export function Header() {
                   <MenuLink to="/dashboard" icon={LayoutDashboard}>Dashboard</MenuLink>
                   <MenuLink to="/dashboard/listings" icon={Car}>My listings</MenuLink>
                   <MenuLink to="/dashboard/promoter" icon={BadgeDollarSign}>Promoter dashboard</MenuLink>
+                  <MenuLink to="/dashboard/messages" icon={MessageSquare}>Messages{unread ? ` (${unread})` : ''}</MenuLink>
+                  <MenuLink to="/dashboard/settings" icon={Settings}>Settings</MenuLink>
                   {profile?.is_admin && <MenuLink to="/admin" icon={Shield}>Admin</MenuLink>}
                   <div className="my-1.5 border-t" />
                   <p className="px-3 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -127,11 +141,12 @@ export function Header() {
 
         <button
           type="button"
-          className="flex size-10 items-center justify-center rounded-md hover:bg-secondary md:hidden"
+          className="relative flex size-10 items-center justify-center rounded-md hover:bg-secondary md:hidden"
           onClick={() => setMobileOpen((o) => !o)}
           aria-label="Toggle menu"
         >
           {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+          {!mobileOpen && unread > 0 && <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-primary" />}
         </button>
       </div>
 
@@ -148,6 +163,8 @@ export function Header() {
                 <Link to="/dashboard" className="rounded-md px-3 py-2.5 font-medium hover:bg-secondary">Dashboard</Link>
                 <Link to="/dashboard/listings" className="rounded-md px-3 py-2.5 font-medium hover:bg-secondary">My listings</Link>
                 <Link to="/dashboard/promoter" className="rounded-md px-3 py-2.5 font-medium hover:bg-secondary">Promoter dashboard</Link>
+                <Link to="/dashboard/messages" className="rounded-md px-3 py-2.5 font-medium hover:bg-secondary">Messages{unread ? ` (${unread})` : ''}</Link>
+                <Link to="/dashboard/settings" className="rounded-md px-3 py-2.5 font-medium hover:bg-secondary">Settings</Link>
                 <div className="flex gap-2 px-3 py-2">
                   {(['owner', 'promoter', 'buyer'] as ActiveMode[]).map((m) => (
                     <button

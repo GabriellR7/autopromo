@@ -1,4 +1,4 @@
-# AutoPromo — Fases 1 e 2
+# AutoPromo — Fases 1, 2 e 3
 
 Marketplace de carros usados para os EUA, onde **donos** anunciam e **promotores** indicam compradores em troca de comissão.
 O site está todo em inglês americano (USD, milhas, MM/DD/YYYY).
@@ -17,13 +17,17 @@ O site está todo em inglês americano (USD, milhas, MM/DD/YYYY).
 | Links de indicação (Fase 2) | Link curto `/r/CODIGO` por carro, botões para Facebook, WhatsApp, SMS e e-mail, **QR code** para baixar, **kit de divulgação** (imagem quadrada 1080×1080 com foto, preço e QR, mais texto pronto) |
 | Rastreio (Fase 2) | Cada visita com `?ref=` registra um clique (sem duplicar visitas repetidas em 30 min e ignorando o próprio promotor e o dono) e grava um cookie de 30 dias, que será usado no chat e nas vendas |
 | Dono x promotores (Fase 2) | Tela **Promoters**: aprovar ou recusar pedidos, ver quantos cliques cada promotor trouxe e remover promotores |
+| Chat (Fase 3) | Mensagens em tempo real entre comprador e dono, comprador e promotor, e dono e promotor, sempre ligadas a um carro. Envio de fotos (bucket privado), confirmação de leitura, contador de não lidas no menu |
+| Anti-bypass (Fase 3) | Telefones, e-mails e links são **escondidos pelo banco** (`[phone hidden]`) até a visita ser confirmada. O site avisa antes de enviar |
+| Visitas (Fase 3) | O comprador propõe data e hora, e o dono confirma ou recusa. Ao confirmar, **os contatos são liberados** (telefone em Settings e e-mail). Dá para cancelar e marcar como concluída |
+| Atribuição (Fase 3) | Conversas abertas com o cookie `?ref=` ficam ligadas ao promotor, e o painel dele mostra cliques, chats e visitas por carro |
+| E-mails (Fase 3) | Edge Function `notifications` (já publicada) envia aviso de mensagem não lida (após 10 min) e lembretes 24h e 1h antes da visita. **Ativação abaixo** |
 | Banco | Tabelas, RLS, regras no banco (limite de anúncios, estados liberados, máx. 20 fotos), busca geográfica, contador de visualizações, bucket de fotos |
 
-Os botões **Contact** e **Schedule a visit** já aparecem, mas o chat e o agendamento chegam na Fase 3.
 
 ## 1. Configurar o Supabase
 
-> **Já está pronto:** o projeto **autopromo** foi criado na sua conta do Supabase (organização "adega capital", região East US), com as 3 migrações e os dados de teste (Fases 1 e 2) aplicados. O arquivo `.env` já vem com a URL e a chave pública. Faltam só os passos 4 a 7 abaixo, que são feitos no painel.
+> **Já está pronto:** o projeto **autopromo** foi criado na sua conta do Supabase (organização "adega capital", região East US), com as 5 migrações e os dados de teste (Fases 1 a 3) aplicados. O arquivo `.env` já vem com a URL e a chave pública. Faltam só os passos 4 a 7 abaixo, que são feitos no painel.
 >
 > URL: `https://scvdvwryiuthnzwsyade.supabase.co`
 
@@ -36,7 +40,7 @@ Para montar do zero em outro projeto:
    - `mike.owner@demo.autopromo.test`
    - `linda.owner@demo.autopromo.test`
 
-   E rode `supabase/seed_phase2.sql` para criar um promotor de teste com links e cliques: `carlos.promoter@demo.autopromo.test` (mesma senha).
+   E rode `supabase/seed_phase2.sql` e `supabase/seed_phase3.sql` (uma conversa com visita pendente). O `seed_phase2.sql` cria um promotor de teste com links e cliques: `carlos.promoter@demo.autopromo.test` (mesma senha).
 
    Os carros de teste não têm fotos. Faça login com um desses usuários e adicione fotos pelo painel. **Não rode o seed em produção.**
 4. Em **Authentication → Sign In / Providers → Email**, deixe **Confirm email** ligado.
@@ -59,7 +63,17 @@ npm run dev             # http://localhost:5173
 
 Para publicar: `npm run build` gera a pasta `dist/`. O arquivo `public/_redirects` já está pronto para Netlify, e o `vercel.json` para Vercel. Lembre de cadastrar as variáveis `VITE_SUPABASE_*` no painel da hospedagem.
 
-## 3. Configurações da plataforma
+## 3. Ativar os e-mails (opcional)
+
+1. Crie uma conta grátis em [resend.com](https://resend.com) e gere uma **API key**. Para mandar de um endereço seu, verifique o domínio no Resend. Sem domínio, ele só envia para o seu próprio e-mail.
+2. No Supabase: **Edge Functions → Secrets**, adicione:
+   - `RESEND_API_KEY` = a chave do Resend
+   - `EMAIL_FROM` = `AutoPromo <avisos@seudominio.com>`
+   - `SITE_URL` = o endereço do site (ex.: `https://autopromo.netlify.app`)
+   - `CRON_SECRET` = uma senha longa qualquer, inventada por você
+3. Abra `supabase/cron_notifications.sql`, troque `PUT-THE-SAME-CRON-SECRET-HERE` pelo mesmo `CRON_SECRET` e rode no SQL Editor. A função passa a rodar a cada 10 minutos.
+
+## 4. Configurações da plataforma
 
 A tabela `platform_settings` (uma linha só) controla:
 
@@ -72,17 +86,18 @@ A tabela `platform_settings` (uma linha só) controla:
 
 Na Fase 5 isso vira uma tela no painel admin.
 
-## 4. Segurança
+## 5. Segurança
 
 - **RLS em todas as tabelas.** Ninguém edita anúncio, foto ou perfil de outra pessoa.
 - **Proteção por coluna.** Pelo navegador, um usuário não consegue se tornar admin, se marcar como verificado, mexer nas visualizações etc.
 - **VIN completo** fica na tabela `car_private`, que só o dono vê. O público vê só os 6 últimos caracteres.
 - **Fotos** ficam em `car-photos/<user_id>/<car_id>/`, e cada usuário só grava na própria pasta.
+- **Chat:** só os 2 participantes leem as mensagens. O promotor vê só que a conversa existe (para as estatísticas), nunca o conteúdo. Telefone fica em `profile_contacts`, visível só pelo dono do número, e só é revelado ao outro por `get_contact_details` depois da visita confirmada.
 - **As regras de negócio** (estado liberado, limite de anúncios, preço e local obrigatórios para publicar) rodam no banco e não podem ser burladas pelo front.
 
 Essas regras foram testadas num Postgres local que imita o Supabase.
 
-## 5. Estrutura
+## 6. Estrutura
 
 ```
 src/
@@ -94,18 +109,19 @@ src/
     ui/          button, input/select/textarea/field, misc (card, badge, alert, avatar…)
   context/       AuthContext (sessão, perfil, modo ativo)
   hooks/         useDocumentTitle, usePlatformSettings
-  lib/           supabase, cars (busca), listings (CRUD + fotos), promotions (promotores), zip, referral (cliques), image, utils, constants, types
+  lib/           supabase, cars (busca), listings (CRUD + fotos), promotions (promotores), chat (mensagens e visitas), zip, referral (cliques), image, utils, constants, types
   pages/         Home, Cars, CarDetail, ReferralRedirect (/r/CODE), StaticPages, auth/*, dashboard/* (incl. promoter/*)
 supabase/
-  migrations/    SQL da Fase 1
-  seed.sql       dados de teste
+  migrations/    SQL das fases (rodar em ordem)
+  functions/     notifications (e-mails)
+  seed*.sql      dados de teste
+  cron_notifications.sql  agendamento dos e-mails
 ```
 
 O ZIP é convertido em cidade, estado e coordenadas pela API gratuita [Zippopotam.us](https://zippopotam.us), sem chave.
 
 ## Próximas fases
 
-3. Chat em tempo real com anti-bypass, e agendamento de visitas
 4. Confirmação de venda, comissões, Stripe Connect e disputas
 5. Avaliações, denúncias e painel admin
 6. Polimento, SEO e performance

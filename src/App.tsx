@@ -18,8 +18,9 @@ import { AuthCallback, CheckEmail, ForgotPassword, ResetPassword } from '@/pages
 const Overview = lazy(() => import('@/pages/dashboard/Overview'));
 const MyListings = lazy(() => import('@/pages/dashboard/MyListings'));
 const ListingWizard = lazy(() => import('@/pages/dashboard/ListingWizard'));
-const ComingSoon = lazy(() => import('@/pages/dashboard/ComingSoon'));
 const OwnerPromoters = lazy(() => import('@/pages/dashboard/OwnerPromoters'));
+const Messages = lazy(() => import('@/pages/dashboard/Messages'));
+const Settings = lazy(() => import('@/pages/dashboard/Settings'));
 const PromoterDashboard = lazy(() => import('@/pages/dashboard/promoter/PromoterDashboard'));
 const PromoterExplore = lazy(() => import('@/pages/dashboard/promoter/PromoterExplore'));
 
@@ -54,10 +55,9 @@ const router = createBrowserRouter([
           { path: 'listings', element: s(<MyListings />) },
           { path: 'listings/new', element: s(<ListingWizard key="new" />) },
           { path: 'listings/:id/edit', element: s(<ListingWizard key="edit" />) },
-          {
-            path: 'messages',
-            element: s(<ComingSoon title="Messages" description="Real-time chat with buyers and promoters, with contact details protected until a visit is scheduled." />),
-          },
+          { path: 'messages', element: s(<Messages />) },
+          { path: 'messages/:id', element: s(<Messages />) },
+          { path: 'settings', element: s(<Settings />) },
           { path: 'promoters', element: s(<OwnerPromoters />) },
           { path: 'promoter', element: s(<PromoterDashboard />) },
           { path: 'promoter/explore', element: s(<PromoterExplore />) },

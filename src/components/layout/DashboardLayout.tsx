@@ -1,9 +1,10 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { BadgeDollarSign, Car, LayoutDashboard, MessageSquare, Plus, Search, Users, type LucideIcon } from 'lucide-react';
+import { BadgeDollarSign, Car, LayoutDashboard, MessageSquare, Plus, Search, Settings, Users, type LucideIcon } from 'lucide-react';
+import { useUnreadCount } from '@/hooks/useUnreadCount';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 
-type Item = { to: string; label: string; icon: LucideIcon; end?: boolean; soon?: boolean };
+type Item = { to: string; label: string; icon: LucideIcon; end?: boolean; badge?: number };
 
 const SELLER: Item[] = [
   { to: '/dashboard', label: 'Overview', icon: LayoutDashboard, end: true },
@@ -17,14 +18,18 @@ const PROMOTER: Item[] = [
   { to: '/dashboard/promoter/explore', label: 'Find cars', icon: Search },
 ];
 
-const COMMON: Item[] = [{ to: '/dashboard/messages', label: 'Messages', icon: MessageSquare, soon: true }];
 
 export function DashboardLayout() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
+  const unread = useUnreadCount(user?.id);
+  const COMMON: Item[] = [
+    { to: '/dashboard/messages', label: 'Messages', icon: MessageSquare, badge: unread },
+    { to: '/dashboard/settings', label: 'Settings', icon: Settings },
+  ];
   const promoterFirst = profile?.active_mode === 'promoter';
   const groups: { title: string; items: Item[] }[] = promoterFirst
-    ? [{ title: 'Promoter', items: PROMOTER }, { title: 'Selling', items: SELLER }, { title: '', items: COMMON }]
-    : [{ title: 'Selling', items: SELLER }, { title: 'Promoter', items: PROMOTER }, { title: '', items: COMMON }];
+    ? [{ title: 'Promoter', items: PROMOTER }, { title: 'Selling', items: SELLER }, { title: 'Account', items: COMMON }]
+    : [{ title: 'Selling', items: SELLER }, { title: 'Promoter', items: PROMOTER }, { title: 'Account', items: COMMON }];
 
   return (
     <div className="container grid gap-6 py-6 lg:grid-cols-[230px_1fr] lg:gap-8 lg:py-8">
@@ -37,7 +42,7 @@ export function DashboardLayout() {
                   {g.title}
                 </p>
               )}
-              {g.items.map(({ to, label, icon: Icon, end, soon }) => (
+              {g.items.map(({ to, label, icon: Icon, end, badge }) => (
                 <NavLink
                   key={to}
                   to={to}
@@ -51,7 +56,7 @@ export function DashboardLayout() {
                 >
                   <Icon className="size-4" />
                   {label}
-                  {soon && <span className="ml-auto hidden rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground lg:inline">Soon</span>}
+                  {badge ? <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-white">{badge > 99 ? '99+' : badge}</span> : null}
                 </NavLink>
               ))}
             </div>
